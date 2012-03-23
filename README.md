@@ -3,11 +3,11 @@
 ## wtf is this
 
 It's currently not possible to use Cocoa's drag-and-drop classes and protocols
-in iPhone/iPad apps.  This really sucks.  Implementing a UIPanGestureRecognizer
-is really fucking boring.
+in iPhone/iPad apps.  This really sucks.  Implementing a
+__UIPanGestureRecognizer__ is really fucking boring.
 
-__SEDraggable__ is a subclass of UIView that fills this void, making it easy to
-add drag-and-drop functionality to any UIView in your application.
+__SEDraggable__ is a subclass of __UIView__ that fills this void, making it
+easy to add drag-and-drop functionality to any __UIView__ in your application.
 
 ## How to use
 
@@ -17,44 +17,91 @@ Add the source files to your Xcode project.  Import the `SEDraggable.h` header.
 #import "SEDraggable.h"
 ```
 
-To initialize an instance of __SEDraggable__, you'll probably want to use
+To initialize an instance of __SEDraggable__, you'll probably want to use one
+of these:
 
 ```objective-c
-- (id) initWithImageView:(UIImageView *)imageView andHomeLocation:(SEDraggableLocation *)location;
+- (id) initWithFrame:(CGRect)frame;
+- (id) initWithImage:(UIImage *)image andSize:(CGSize)size;
+- (id) initWithImageView:(UIImageView *)imageView;
 ```
 
-### But I don't want to use a UIImageView
-
-Go fork yourself (actually, pull requests are more than welcome, so please do). 
-I do plan on refactoring this to be more general -- it's just one of those
-thankless jobs that doesn't pay, and therefore is biding its time on the
-backburner.  I promise you -- it's not lonely back there, not in the least.
-
-You can work around this after you're done initializing your __SEDraggable__
-object by simply calling __SEDraggable__'s inherited `addSubview:` method just
-as with any other UIView.  Feel free to pass any kind of UIView objects or
-UIView subclass objects to that method -- it shouldn't bork anything.
-
-### And what's that home location parameter?
-
-The `homeLocation` property is only really relevant when you want your
-draggable elements to automatically snap back to where they began if they
-aren't dropped in an allowed location (represented by the
-__SEDraggableLocation__ class).  If you don't need this functionality, simply
-create an instance of __SEDraggableLocation__ to represent where your draggable
-element should first appear.
-
 ```objective-c
-// create the SEDraggableLocation to represent the draggable element's starting point
-CGRect initialLocation = CGRectMake(10, 10, 100, 100);
-SEDraggableLocation *homeLocation = [SEDraggableLocation initWithBounds:initialLocation];
-
 // set up the UIImageView that will be used as the visible component of our draggable element
 UIImage *image = [[UIImage alloc] initWithContentsOfFile:@"someFile.png"];
 UIImageView *imageView = [UIImageView alloc] initWithImage:image];
 
-// finally, initialize the draggable element itself
-SEDraggable *draggableView = [SEDraggable initWithImageView:imageView andHomeLocation:homeLocation];
+// initialize the draggable element itself
+SEDraggable *draggableView = [SEDraggable initWithImageView:imageView];
+```
+
+Of course, as mentioned, there are simpler init methods to suit different
+needs.
+
+```objective-c
+CGRect frame = CGRectMake(10, 10, 100, 100);
+SEDraggable *draggableView = [SEDraggable initWithFrame:frame];
+// ... or ...
+SEDraggable *draggableView = [SEDraggable init];
+```
+
+## Using SEDraggableLocation to manage automatic behaviors
+
+__SEDraggableLocation__ allows you to easily switch between certain automatic
+behaviors -- for example, visually arranging a set of __SEDraggable__ objects
+so that they don't appear to be haphazardly strewn about, or yanking an
+__SEDraggable__ back to its original location when a drag-and-drop operation is
+unsuccessful for some reason.
+
+Try something like the following.  Run the code and then play around with the
+draggable objects to see how they behave.
+
+```objective-c
+SEDraggable *draggableView = ...
+
+// create the SEDraggableLocation to represent the draggable element's starting point
+CGRect homeLocationBounds = CGRectMake(10, 10, 100, 100);
+CGRect otherLocationBounds = CGRectMake(200, 200, 100, 100);
+SEDraggableLocation *homeLocation = [SEDraggableLocation initWithBounds:homeLocationBounds];
+SEDraggableLocation *otherLocation = [SEDraggableLocation initWithBounds:otherLocationBounds];
+
+// configure a whole litany of options
+otherLocation.objectWidth = draggableView.frame.size.width;
+otherLocation.objectHeight = draggableView.frame.size.height;
+otherLocation.marginLeft = 3;
+otherLocation.marginRight = 3;
+otherLocation.marginTop = 3;
+otherLocation.marginBottom = 3;
+otherLocation.marginBetweenX = 3;
+otherLocation.marginBetweenY = 3;
+otherLocation.shouldAcceptDroppedObjects = YES;
+otherLocation.shouldAutomaticallyRecalculateObjectPositions = YES;
+otherLocation.shouldAnimateObjectAdjustments = YES;
+otherLocation.animationDuration = 0.5f;
+otherLocation.animationDelay = 0.0f;
+otherLocation.animationOptions = UIViewAnimationOptionBeginFromCurrentState;
+otherLocation.fillHorizontallyFirst = YES; // NO makes it fill rows first
+otherLocation.allowRows = YES;
+otherLocation.allowColumns = YES;
+
+// add the draggable object, or maybe even several
+[homeLocation addDraggableObject:draggableView];
+```
+
+## SEDraggableLocation bounds
+
+You can even specify different boundaries for where an __SEDraggableLocation__
+will _accept_ dropped objects and where it will _place_ them.  And these two
+regions don't even have to be contiguous in any way!  It's kind of cool to
+watch what happens if they're not -- when you drop your draggable objects, they
+fly from one area of the screen to another automatically.
+
+These are the two properties you'll want to look at if you want to configure
+this kind of behavior:
+
+```objective-c
+@property (nonatomic, readwrite) CGRect responsiveBounds;
+@property (nonatomic, readwrite) CGRect objectGutterBounds;
 ```
 
 ## Delegate notifications
