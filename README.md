@@ -85,6 +85,9 @@ otherLocation.allowRows = YES;
 otherLocation.allowColumns = YES;
 
 // add the draggable object, or maybe even several
+draggableView.homeLocation = homeLocation;
+[draggableView addAllowedDropLocation:homeLocation];
+[draggableView addAllowedDropLocation:otherLocation];
 [homeLocation addDraggableObject:draggableView];
 ```
 
