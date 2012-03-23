@@ -2,7 +2,7 @@
 //  SEDraggableLocation.h
 //  audigram
 //
-//  Created by bryn austin bellomy and eric mark mendelson on 10/24/11.
+//  Created by bryn austin bellomy on 10/24/11.
 //  Copyright (c) 2012 signals.io» (signalenvelope LLC). All rights reserved.
 //
 
