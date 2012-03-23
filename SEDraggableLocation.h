@@ -1,6 +1,6 @@
 //
 //  SEDraggableLocation.h
-//  audigram
+//  SEDraggable
 //
 //  Created by bryn austin bellomy on 10/24/11.
 //  Copyright (c) 2012 signals.io» (signalenvelope LLC). All rights reserved.
@@ -10,11 +10,16 @@
 
 @class SEDraggable, SEDraggableLocation;
 
-@protocol SEDraggableLocationEventResponder
+@protocol SEDraggableLocationEventResponder <NSObject>
   @optional
     - (void) draggableLocation:(SEDraggableLocation *)location didAcceptDroppedObject:(SEDraggable *)object;
     - (void) draggableLocation:(SEDraggableLocation *)location didRefuseDroppedObject:(SEDraggable *)object;
+    - (void) draggableLocationDidRecalculateObjectPositions:(SEDraggableLocation *)location;
     - (void) draggableObject:(SEDraggable *)object wasRemovedFromLocation:(SEDraggableLocation *)location;
+@end
+
+@protocol SEDraggableLocationClient <NSObject>
+- (void) draggableLocationDidRefuseDrop:(SEDraggableLocation *)location;
 @end
 
 #define kRESPONSIVE_BOUNDS_KEY 						@"responsiveBounds"
@@ -40,6 +45,11 @@
     CGRect _responsiveBounds;
     CGRect _objectGutterBounds;
     BOOL _shouldAcceptDroppedObjects;
+    BOOL _shouldAutomaticallyRecalculateObjectPositions;
+    BOOL _shouldAnimateObjectAdjustments;
+    CGFloat _animationDuration;
+    CGFloat _animationDelay;
+    UIViewAnimationOptions _animationOptions;
     BOOL _fillHorizontallyFirst;
     BOOL _allowRows;
     BOOL _allowColumns;
@@ -67,6 +77,11 @@
 @property (nonatomic, readwrite) CGRect responsiveBounds;
 @property (nonatomic, readwrite) CGRect objectGutterBounds;
 @property (nonatomic, readwrite) BOOL shouldAcceptDroppedObjects;
+@property (nonatomic, readwrite) BOOL shouldAutomaticallyRecalculateObjectPositions;
+@property (nonatomic, readwrite) BOOL shouldAnimateObjectAdjustments;
+@property (nonatomic, readwrite) CGFloat animationDuration;
+@property (nonatomic, readwrite) CGFloat animationDelay;
+@property (nonatomic, readwrite) UIViewAnimationOptions animationOptions;
 @property (nonatomic, readwrite) BOOL fillHorizontallyFirst;
 @property (nonatomic, readwrite) BOOL allowRows;
 @property (nonatomic, readwrite) BOOL allowColumns;
@@ -74,15 +89,13 @@
 @property (nonatomic, readwrite, strong) NSMutableArray *containedObjects;
 @property (nonatomic, readwrite) int tag;
 
-- (id)      initWithBounds:(CGRect)bounds;
-- (void)    draggableObjectWasDroppedInside:(SEDraggable *)draggable;
-- (void)    acceptDraggableObject:(SEDraggable *)draggable;
-- (void)    refuseDraggableObject:(SEDraggable *)draggable;
-- (void)    removeDraggableObject:(SEDraggable *)draggable;
-- (CGPoint) calculateCenterOfDraggableObject:(SEDraggable *)object inPosition:(int)position;
-- (CGPoint) getAcceptableLocationForDraggableObject:(SEDraggable *)object;
-- (void)    recalculateAllObjectPositions;
-- (BOOL)    pointIsInsideLocation:(CGPoint)point;
+- (id)   initWithBounds:(CGRect)bounds;
+- (void) addDraggableObject:(SEDraggable *)draggable;
+- (void) removeDraggableObject:(SEDraggable *)draggable;
+- (void) snapDraggableIntoBounds:(SEDraggable *)object;
+- (void) draggableObjectWasDroppedInside:(SEDraggable *)draggable;
+- (void) recalculateAllObjectPositions;
+- (BOOL) pointIsInsideLocation:(CGPoint)point;
 
 
 @end

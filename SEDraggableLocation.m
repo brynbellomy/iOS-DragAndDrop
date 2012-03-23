@@ -9,11 +9,23 @@
 #import "SEDraggableLocation.h"
 #import "SEDraggable.h"
 
+@interface SEDraggableLocation ()
+- (void)    acceptDraggableObject:(SEDraggable *)draggable;
+- (void)    refuseDraggableObject:(SEDraggable *)draggable;
+- (CGPoint) calculateCenterOfDraggableObject:(SEDraggable *)object inPosition:(int)position;
+- (CGPoint) getAcceptableLocationForDraggableObject:(SEDraggable *)object;
+@end
+
 @implementation SEDraggableLocation
 
 @synthesize responsiveBounds = _responsiveBounds;
 @synthesize objectGutterBounds = _objectGutterBounds;
 @synthesize shouldAcceptDroppedObjects = _shouldAcceptDroppedObjects;
+@synthesize shouldAutomaticallyRecalculateObjectPositions = _shouldAutomaticallyRecalculateObjectPositions;
+@synthesize shouldAnimateObjectAdjustments = _shouldAnimateObjectAdjustments;
+@synthesize animationDuration = _animationDuration;
+@synthesize animationDelay = _animationDelay;
+@synthesize animationOptions = _animationOptions;
 @synthesize delegate = _delegate;
 @synthesize containedObjects = _containedObjects;
 @synthesize objectWidth = _objectWidth;
@@ -29,6 +41,7 @@
 @synthesize allowColumns = _allowColumns;
 @synthesize tag = _tag;
 
+
 - (id)initWithBounds:(CGRect)bounds {
   self = [super init];
   if (self) {
@@ -36,6 +49,11 @@
     self.responsiveBounds = bounds;
     self.containedObjects = [[NSMutableArray alloc] init];
     self.shouldAcceptDroppedObjects = YES;
+    self.shouldAutomaticallyRecalculateObjectPositions = YES;
+    self.shouldAnimateObjectAdjustments = YES;
+    self.animationDuration = 0.3f;
+    self.animationDelay = 0.0f;
+    self.animationOptions = UIViewAnimationOptionBeginFromCurrentState;
     self.delegate = nil;
     self.objectWidth = 0;
     self.objectHeight = 0;
@@ -59,6 +77,10 @@
   int objectsPerCol = floor(((self.objectGutterBounds.size.height - self.marginTop - self.marginBottom - (2 * self.marginBetweenY)) / self.objectHeight));
   int row, col;
   
+  // prevent divide-by-zero errors
+  if (objectsPerRow == 0) objectsPerRow = 1;
+  if (objectsPerCol == 0) objectsPerCol = 1;
+  
   if (self.fillHorizontallyFirst) {
     col = position % objectsPerRow;
     row = (position - col) / objectsPerRow;
@@ -72,6 +94,11 @@
   point.y = self.objectGutterBounds.origin.y + self.marginTop  + (row * (self.marginBetweenY + self.objectHeight)) + (self.objectHeight / 2);
   
   return point;
+}
+
+- (void) snapDraggableIntoBounds:(SEDraggable *)object {
+  CGPoint point = [self getAcceptableLocationForDraggableObject:object];
+  [object snapCenterToPoint:point withAnimationID:@"snapBackToHomeFrame" andContext:NULL];
 }
 
 - (CGPoint) getAcceptableLocationForDraggableObject:(SEDraggable *)object {
@@ -90,12 +117,21 @@
   CGPoint point = [self calculateCenterOfDraggableObject:object inPosition:self.containedObjects.count - 1];
   [object snapCenterToPoint:point withAnimationID:@"snapToDraggableLocation" andContext:NULL];
   
-  [self.delegate draggableLocation:self didAcceptDroppedObject:object];
+  if ([self.delegate respondsToSelector:@selector(draggableLocation:didAcceptDroppedObject:)])
+    [self.delegate draggableLocation:self didAcceptDroppedObject:object];
+  
+  if (self.shouldAutomaticallyRecalculateObjectPositions)
+    [self recalculateAllObjectPositions];
 }
 
 - (void) refuseDraggableObject:(SEDraggable *)object {
   [object draggableLocationDidRefuseDrop:self];
-  [self.delegate draggableLocation:self didRefuseDroppedObject:object];
+  if ([self.delegate respondsToSelector:@selector(draggableLocation:didRefuseDroppedObject:)])
+    [self.delegate draggableLocation:self didRefuseDroppedObject:object];
+}
+
+- (void) addDraggableObject:(SEDraggable *)draggable {
+  [self acceptDraggableObject:draggable];
 }
 
 - (void) removeDraggableObject:(SEDraggable *)draggable {
@@ -105,14 +141,35 @@
   }
   
   [self.containedObjects removeObject:draggable];
-  [self.delegate draggableObject:draggable wasRemovedFromLocation:self];
+  if ([self.delegate respondsToSelector:@selector(draggableObject:wasRemovedFromLocation:)])
+    [self.delegate draggableObject:draggable wasRemovedFromLocation:self];
+
+  if (self.shouldAutomaticallyRecalculateObjectPositions)
+    [self recalculateAllObjectPositions];
 }
 
 - (void) recalculateAllObjectPositions {
-  // recalculate positions for all icons
-  int index = 0;
-  for (SEDraggable *object in self.containedObjects) {
-    [object setCenter:[self calculateCenterOfDraggableObject:object inPosition:index++]];
+  __block SEDraggableLocation *myself = self;
+
+  void (^blockRecalculate)() = ^{
+    int index = 0;
+    for (SEDraggable *object in myself.containedObjects) {
+      [object setCenter:[myself calculateCenterOfDraggableObject:object inPosition:index++]];
+    }
+  };
+  
+  void (^blockCompletion)(BOOL) = ^(BOOL finished) {
+    if ([myself.delegate respondsToSelector:@selector(draggableLocationDidRecalculateObjectPositions:)])
+      [myself.delegate draggableLocationDidRecalculateObjectPositions:myself];
+  };
+  
+  if (self.shouldAnimateObjectAdjustments) {
+    [UIView animateWithDuration:self.animationDuration delay:self.animationDelay options:self.animationOptions
+                     animations:blockRecalculate completion:blockCompletion];
+  }
+  else {
+    blockRecalculate();
+    blockCompletion(YES);
   }
 }
 
