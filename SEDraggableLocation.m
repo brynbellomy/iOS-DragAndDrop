@@ -153,8 +153,18 @@
 
   void (^blockRecalculate)() = ^{
     int index = 0;
+    unsigned int iseed = (unsigned int)time(NULL);
+    srand(iseed);
+    CGFloat adjusted = 0.0f;
+    double max = RAND_MAX;
+    double irand;
     for (SEDraggable *object in myself.containedObjects) {
-      [object setCenter:[myself calculateCenterOfDraggableObject:object inPosition:index++]];
+      CGPoint center = [myself calculateCenterOfDraggableObject:object inPosition:index++];
+      irand = (double)rand();
+      adjusted = ((irand / max) * 5.0f) - 2.5f;
+      center.x += adjusted;
+      center.y += ((irand / max) * 5.0f) - 2.5f;
+      [object setCenter:center];
     }
   };
   
