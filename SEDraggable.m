@@ -2,7 +2,7 @@
 //  SEDraggable.m
 //  SEDraggable
 //
-//  Created by bryn austin bellomy and eric mark mendelson on 10/23/11.
+//  Created by bryn austin bellomy on 10/23/11.
 //  Copyright (c) 2012 signals.io» (signalenvelope LLC). All rights reserved.
 //
 

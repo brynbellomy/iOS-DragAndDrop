@@ -2,27 +2,28 @@
 //  SEDraggable.h
 //  SEDraggable
 //
-//  Created by bryn austin bellomy and eric mark mendelson on 10/23/11.
+//  Created by bryn austin bellomy on 10/23/11.
 //  Copyright (c) 2012 signals.io» (signalenvelope LLC). All rights reserved.
 //
 
 #import <Foundation/Foundation.h>
+#import "SEDraggableLocation.h"
 
 @class SEDraggableLocation, SEDraggable;
 
 @protocol SEDraggableEventResponder
+  @optional
+      - (void) draggableObjectDidMove:(SEDraggable *)object;
+      - (void) draggableObjectDidStopMoving:(SEDraggable *)object;
 
-  - (void) draggableObjectDidMove:(SEDraggable *)object;
-  - (void) draggableObjectDidStopMoving:(SEDraggable *)object;
+      - (void) draggableObject:(SEDraggable *)object didMoveWithinLocation:(SEDraggableLocation *)location;
+      - (void) draggableObject:(SEDraggable *)object didStopMovingWithinLocation:(SEDraggableLocation *)location;
 
-  - (void) draggableObject:(SEDraggable *)object didMoveWithinLocation:(SEDraggableLocation *)location;
-  - (void) draggableObject:(SEDraggable *)object didStopMovingWithinLocation:(SEDraggableLocation *)location;
+      - (void) draggableObjectWillSnapBackToHomeFrame:(SEDraggable *)object;
+      - (void) draggableObjectDidEndSnappingBackToHomeFrame:(SEDraggable *)object;
 
-  - (void) draggableObjectWillSnapBackToHomeFrame:(SEDraggable *)object;
-  - (void) draggableObjectDidEndSnappingBackToHomeFrame:(SEDraggable *)object;
-
-  - (void) draggableObject:(SEDraggable *)object didBeginSnapAnimationWithID:(NSString *)animationID andContext:(void *)context;
-  - (void) draggableObject:(SEDraggable *)object didEndSnapAnimationWithID:(NSString *)animationID andContext:(void *)context; // it's up to the delegate to set draggable.currentLocation when the delegate initiates the animation and it's appropriate to do so
+      - (void) draggableObject:(SEDraggable *)object didBeginSnapAnimationWithID:(NSString *)animationID andContext:(void *)context;
+      - (void) draggableObject:(SEDraggable *)object didEndSnapAnimationWithID:(NSString *)animationID andContext:(void *)context; // it's up to the delegate to set draggable.currentLocation when the delegate initiates the animation and it's appropriate to do so
 
 @end
 
