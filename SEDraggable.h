@@ -9,6 +9,10 @@
 #import <Foundation/Foundation.h>
 #import "SEDraggableLocation.h"
 
+@interface UIView (Helpr)
+- (CGPoint) getCenterInWindowCoordinates;
+@end
+
 @class SEDraggableLocation, SEDraggable;
 
 @protocol SEDraggableEventResponder <NSObject>

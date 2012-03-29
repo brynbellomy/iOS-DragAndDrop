@@ -9,6 +9,12 @@
 #import "SEDraggable.h"
 #import "SEDraggableLocation.h"
 
+@implementation UIView (Helpr)
+- (CGPoint) getCenterInWindowCoordinates {
+  return [self.superview convertPoint:self.center toView:nil];
+}
+@end
+
 @interface SEDraggable ()
 - (void) handleDrag:(id)sender;
 - (void) askToEnterLocation:(SEDraggableLocation *)location entryMethod:(SEDraggableLocationEntryMethod)entryMethod animated:(BOOL)animated;
@@ -117,8 +123,9 @@
     if (self.droppableLocations.count > 0) {
       for (SEDraggableLocation *location in self.droppableLocations) {
       
-        CGPoint myLocalCoordinates = [self.superview convertPoint:myCoordinates toView:location];
-        if ([location pointIsInsideResponsiveBounds:myLocalCoordinates]) {
+        //@@CONVERTPOINT CGPoint myLocalCoordinates = [self.superview convertPoint:myCoordinates toView:location];
+        CGPoint myWindowCoordinates = [self.superview convertPoint:myCoordinates toView:nil];
+        if ([location pointIsInsideResponsiveBounds:myWindowCoordinates]) {
           if ([self.delegate respondsToSelector:@selector(draggableObject:didMoveWithinLocation:)]) {
             [location draggableObjectDidMoveWithinBounds:self];
             [self.delegate draggableObject:self didMoveWithinLocation:location];
@@ -137,8 +144,9 @@
     SEDraggableLocation *dropLocation = nil;
     
     for (SEDraggableLocation *location in self.droppableLocations) {
-      CGPoint myLocalCoordinates = [self.superview convertPoint:myCoordinates toView:location];
-      if ([location pointIsInsideResponsiveBounds:myLocalCoordinates]) {
+      //@@CONVERTPOINT CGPoint myLocalCoordinates = [self.superview convertPoint:myCoordinates toView:location];
+      CGPoint myWindowCoordinates = [self.superview convertPoint:myCoordinates toView:nil];
+      if ([location pointIsInsideResponsiveBounds:myWindowCoordinates]) {
         didStopMovingWithinLocation = YES;
         dropLocation = location;
         break;

@@ -247,7 +247,8 @@ const NSInteger SEDraggableLocationPositionDetermineAutomatically = -1;
     }
     else {
       // return the center point
-      return CGPointMake(self.bounds.size.width / 2, self.bounds.size.height / 2);
+      //@@CONVERTPOINT return CGPointMake(self.bounds.size.width / 2, self.bounds.size.height / 2);
+      return [self getCenterInWindowCoordinates]; //[self convertPoint:CGPointMake(CGRectGetMidX(self.bounds), CGRectGetMidY(self.bounds)) toView:nil];
     }
   }
   else {
@@ -258,20 +259,8 @@ const NSInteger SEDraggableLocationPositionDetermineAutomatically = -1;
     else {
       // @@TODO: ??
       // for now gonna return the center point
-      return CGPointMake(self.bounds.size.width / 2, self.bounds.size.height / 2);
+      return [self getCenterInWindowCoordinates];
     }
-  }
-  
-  
-  
-  if (self.shouldKeepObjectsArranged /*|| object.previousLocation == nil*/) {
-    if (position == SEDraggableLocationPositionDetermineAutomatically)
-      position = self.containedObjects.count - 1;
-    return [self calculateCenterOfDraggableObject:object inPosition:position];
-  }
-  else {
-    return CGPointMake(self.frame.size.width / 2, self.frame.size.height / 2); //self.center;
-    //return [self calculateNearestPointInGutterBoundsForDraggableObject:object];
   }
 }
 
@@ -311,11 +300,13 @@ const NSInteger SEDraggableLocationPositionDetermineAutomatically = -1;
 }
 
 - (BOOL) pointIsInsideResponsiveBounds:(CGPoint)point {
-  // 'point' must be in self's local coordinate system already
+  // 'point' must be in self's local coordinate system already (@@CONVERTPOINT not true at the moment)
   
   NSLogCGPoint(@"pointIsInsideResponsiveBounds (point) >> ", point);
   NSLogCGRect(@"pointIsInsideResponsiveBounds (bound) >> ", self.responsiveBounds.bounds);
-  BOOL inside = [self.responsiveBounds pointInside:point withEvent:nil];
+  //@@CONVERTPOINT
+  CGPoint localPoint = [self.responsiveBounds convertPoint:point fromView:nil];
+  BOOL inside = [self.responsiveBounds pointInside:localPoint withEvent:nil];
   printf((inside ? "yes\n" : "no\n"));
   return inside;
   /*if (point.x > self.responsiveBounds.origin.x && point.x < (self.responsiveBounds.origin.x + self.responsiveBounds.size.width)
@@ -333,51 +324,22 @@ const NSInteger SEDraggableLocationPositionDetermineAutomatically = -1;
                    entryMethod:(SEDraggableLocationEntryMethod)entryMethod
                       animated:(BOOL)animated {
   
-  NSLogCGPoint(@">> draggable.center before convertPoint:\t", draggable.center);
-  draggable.center = [draggable convertPoint:draggable.center toView:self];
-  NSLogCGPoint(@">> draggable.center before convertPoint:\t", draggable.center);
+  // convert 'center' over to the receiver view's coordinate system in advance
+  CGPoint draggableCenterInWindowCoords = [draggable getCenterInWindowCoordinates];
+  CGPoint draggableCenterInReceiverCoords = [self convertPoint:draggableCenterInWindowCoords fromView:nil];
+  draggable.center = draggableCenterInReceiverCoords;
+
   // @@TODO: this will cause retain cycles unless one side of the relationship is weak
   [self.containedObjects addObject:draggable];
-  UIView *previousSuperview = draggable.superview;
-  //NSLogCGPoint(@">> draggable.center before addSubview:\t", draggable.center);
-  [self addSubview:draggable];
-  //NSLogCGPoint(@">> draggable.center after addSubview:\t", draggable.center);
-  //NSLog(@"[[[ draggable.currentLocation = %@ ]]]", draggable.currentLocation);
-  //NSLog(@"[[[ draggable.previousLocation.tag = %d ]]]", draggable.currentLocation.tag);
   draggable.previousLocation = draggable.currentLocation;
   draggable.currentLocation = self;
   
-  //NSLog(@"[[[ draggable.currentLocation = %@ ]]]", draggable.currentLocation);
-  //NSLog(@"[[[ draggable.currentLocation.tag = %d ]]]", draggable.currentLocation.tag);
+  // add the draggable to its new parent view
+  [self addSubview:draggable];
   
-  
-  
-  CGPoint point = [self getAcceptableLocationForDraggableObject:draggable
+  CGPoint destinationPointInWindowCoords = [self getAcceptableLocationForDraggableObject:draggable
                                                      inPosition:SEDraggableLocationPositionDetermineAutomatically];
-  //NSLogCGPoint(@">> UNconverted point:\t", point);
-  
-  // 1) don't convert the destination CGPoint for brand new SENoteViews
-  // 2) only convert the destination CGPoint for SENoteViews that have already been subviews of some other view already
-  // 3) convert draggable.center to the new view's coordinate system so that the animation doesn't fly in from some bizarre direction
-  if (previousSuperview != nil || draggable.previousLocation != nil) {
-    if (previousSuperview != nil) { // prefer the Cocoa-managed UIView stuff over our own abusable properties
-                                    //point = [previousSuperview convertPoint:point toView:draggable];
-      //draggable.center = [previousSuperview convertPoint:draggable.center toView:draggable];
-      //draggable.center = newCenter;
-    }
-    else {
-      //point = [draggable.previousLocation convertPoint:point toView:draggable];
-      //draggable.center = [draggable.previousLocation convertPoint:draggable.center toView:draggable];
-      //draggable.center = newCenter
-    }
-  }
-  else {
-    NSLogCGPoint(@">> draggable.center before universe conversion:\t", draggable.center);
-    //draggable.center = newCenter;
-    NSLogCGPoint(@">> draggable.center after universe conversion:\t", draggable.center);
-  }
-  
-  NSLogCGPoint(@">> converted point:\t", point);
+  CGPoint destinationPointInLocalCoords = [self convertPoint:destinationPointInWindowCoords fromView:nil];
   
   __block SEDraggableLocation *myself = self;
   __block SEDraggable *blockDraggable = draggable;
@@ -394,12 +356,12 @@ const NSInteger SEDraggableLocationPositionDetermineAutomatically = -1;
       [myself.delegate draggableLocation:myself didAcceptObject:blockDraggable entryMethod:entryMethod];
   };
   
-//  if (animated) {
-  [draggable snapCenterToPoint:point animated:animated completion:completionBlock];
-//  }
-//  else {
-//    completionBlock(YES);
-//  }
+  if (animated) {
+    [draggable snapCenterToPoint:destinationPointInLocalCoords animated:animated completion:completionBlock];
+  }
+  else {
+    completionBlock(YES);
+  }
 }
 
 - (void) refuseDraggableObject:(SEDraggable *)draggable
