@@ -21,7 +21,6 @@ const NSInteger SEDraggableLocationPositionDetermineAutomatically = -1;
 - (CGPoint) calculateCenterOfDraggableObject:(SEDraggable *)object inPosition:(NSInteger)position;
 - (CGPoint) getAcceptableLocationForDraggableObject:(SEDraggable *)object inPosition:(NSInteger)position;
 - (CGPoint) calculateNearestPointInGutterBoundsForDraggableObject:(SEDraggable *)draggable;
-//- (void)    snapDraggableIntoBounds:(SEDraggable *)object completion:(void (^)())block;
 
 @end
 
@@ -156,28 +155,6 @@ const NSInteger SEDraggableLocationPositionDetermineAutomatically = -1;
   [self draggableObject:draggable wantsToEnterLocationWithEntryMethod:SEDraggableLocationEntryMethodWasAdded animated:animated];
 }
 
-/*- (void) addDraggableObject:(SEDraggable *)draggable animated:(BOOL)animated {
-  [self draggableObjectWasForciblyAdded:draggable animated:animated];
-  
-  [self addSubview:draggable];
-   
-   CGPoint endPoint = [self getAcceptableLocationForDraggableObject:draggable
-   inPosition:SEDraggableLocationPositionDetermineAutomatically];
-   // @@TODO: convert point from one view's coordinate system to another?
-   if (animated) {
-   [draggable snapCenterToPoint:endPoint completion:nil];
-   }
-   else {
-   draggable.center = endPoint;
-   }
-   
-   draggable.currentLocation = self;
-   
-   // notify delegate
-   if ([self.delegate respondsToSelector:@selector(draggableObject:wasAddedToLocation:)])
-   [self.delegate draggableObject:draggable wasAddedToLocation:self];
-}*/
-
 
 
 #pragma mark- Movement event handlers
@@ -203,9 +180,7 @@ const NSInteger SEDraggableLocationPositionDetermineAutomatically = -1;
 
 - (CGPoint) calculateCenterOfDraggableObject:(SEDraggable *)object inPosition:(NSInteger)position {
   CGPoint point;
-  //self.objectGutterBounds.frame = self.frame;
-  //NSLog(@"gutter: %f %f %f %f", self.objectGutterBounds.origin.x, self.objectGutterBounds.origin.y, self.objectGutterBounds.size.width ,self.objectGutterBounds.size.height);
-  CGRect rect = self.objectGutterBounds.frame; //[self convertRect:self.objectGutterBounds fromView:self.superview];
+  CGRect rect = self.objectGutterBounds.frame;
   int objectsPerRow = floor(((rect.size.width - self.marginLeft - self.marginRight - (2 * self.marginBetweenX)) / self.objectWidth));
   int objectsPerCol = floor(((rect.size.height - self.marginTop - self.marginBottom - (2 * self.marginBetweenY)) / self.objectHeight));
   int row, col;
@@ -230,6 +205,7 @@ const NSInteger SEDraggableLocationPositionDetermineAutomatically = -1;
 }
 
 - (CGPoint) calculateNearestPointInGutterBoundsForDraggableObject:(SEDraggable *)draggable {
+  // @@TODO
 //  CGPoint topLeftCorner = {0};
 //  topLeftCorner.x = draggable.center.x - (draggable.bounds.size.width / 2);
 //  topLeftCorner.y = draggable.center.y - (draggable.bounds.size.height / 2);
@@ -247,8 +223,7 @@ const NSInteger SEDraggableLocationPositionDetermineAutomatically = -1;
     }
     else {
       // return the center point
-      //@@CONVERTPOINT return CGPointMake(self.bounds.size.width / 2, self.bounds.size.height / 2);
-      return [self getCenterInWindowCoordinates]; //[self convertPoint:CGPointMake(CGRectGetMidX(self.bounds), CGRectGetMidY(self.bounds)) toView:nil];
+      return [self getCenterInWindowCoordinates];
     }
   }
   else {
@@ -300,19 +275,9 @@ const NSInteger SEDraggableLocationPositionDetermineAutomatically = -1;
 }
 
 - (BOOL) pointIsInsideResponsiveBounds:(CGPoint)point {
-  // 'point' must be in self's local coordinate system already (@@CONVERTPOINT not true at the moment)
-  
-  NSLogCGPoint(@"pointIsInsideResponsiveBounds (point) >> ", point);
-  NSLogCGRect(@"pointIsInsideResponsiveBounds (bound) >> ", self.responsiveBounds.bounds);
-  //@@CONVERTPOINT
   CGPoint localPoint = [self.responsiveBounds convertPoint:point fromView:nil];
   BOOL inside = [self.responsiveBounds pointInside:localPoint withEvent:nil];
-  printf((inside ? "yes\n" : "no\n"));
   return inside;
-  /*if (point.x > self.responsiveBounds.origin.x && point.x < (self.responsiveBounds.origin.x + self.responsiveBounds.size.width)
-   && point.y > self.responsiveBounds.origin.y && point.y < (self.responsiveBounds.origin.y + self.responsiveBounds.size.height))
-   return YES;
-   else return NO;*/
 }
 
 
@@ -338,7 +303,7 @@ const NSInteger SEDraggableLocationPositionDetermineAutomatically = -1;
   [self addSubview:draggable];
   
   CGPoint destinationPointInWindowCoords = [self getAcceptableLocationForDraggableObject:draggable
-                                                     inPosition:SEDraggableLocationPositionDetermineAutomatically];
+                                                                              inPosition:SEDraggableLocationPositionDetermineAutomatically];
   CGPoint destinationPointInLocalCoords = [self convertPoint:destinationPointInWindowCoords fromView:nil];
   
   __block SEDraggableLocation *myself = self;

@@ -122,8 +122,6 @@
     
     if (self.droppableLocations.count > 0) {
       for (SEDraggableLocation *location in self.droppableLocations) {
-      
-        //@@CONVERTPOINT CGPoint myLocalCoordinates = [self.superview convertPoint:myCoordinates toView:location];
         CGPoint myWindowCoordinates = [self.superview convertPoint:myCoordinates toView:nil];
         if ([location pointIsInsideResponsiveBounds:myWindowCoordinates]) {
           if ([self.delegate respondsToSelector:@selector(draggableObject:didMoveWithinLocation:)]) {
@@ -144,7 +142,6 @@
     SEDraggableLocation *dropLocation = nil;
     
     for (SEDraggableLocation *location in self.droppableLocations) {
-      //@@CONVERTPOINT CGPoint myLocalCoordinates = [self.superview convertPoint:myCoordinates toView:location];
       CGPoint myWindowCoordinates = [self.superview convertPoint:myCoordinates toView:nil];
       if ([location pointIsInsideResponsiveBounds:myWindowCoordinates]) {
         didStopMovingWithinLocation = YES;
@@ -152,9 +149,6 @@
         break;
       }
     }
-    
-    //self.previousLocation = self.currentLocation; // retain self.currentLocation
-    //[self.currentLocation removeDraggableObject:self]; // release self.currentLocation
     
     if (didStopMovingWithinLocation) {
       if ([self.delegate respondsToSelector:@selector(draggableObjectDidStopMoving:)])
