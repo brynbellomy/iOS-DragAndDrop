@@ -11,12 +11,12 @@
 
 @interface SEDraggable ()
 - (void) handleDrag:(id)sender;
-- (void) iconSnapAnimationDidStop:(NSString *)animationID finished:(NSNumber *)finished context:(void *)context;
+- (void) askToEnterLocation:(SEDraggableLocation *)location entryMethod:(SEDraggableLocationEntryMethod)entryMethod animated:(BOOL)animated;
 @end
 
 @implementation SEDraggable
 
-@synthesize shouldSnapBackToHomeFrame = _shouldSnapBackToHomeFrame,
+@synthesize shouldSnapBackToHomeLocation = _shouldSnapBackToHomeLocation,
             currentLocation = _currentLocation,
             homeLocation = _homeLocation,
             previousLocation = _previousLocation,
@@ -54,7 +54,7 @@
   return self;
 }
 
-#pragma mark Designated initializer
+#pragma mark -- Designated initializer
 
 - (id) initWithFrame:(CGRect)frame {
   self = [super initWithFrame:frame];
@@ -66,7 +66,7 @@
     self.panGestureRecognizer.delegate = self;
     [self addGestureRecognizer:self.panGestureRecognizer];
     
-    self.shouldSnapBackToHomeFrame = NO;
+    self.shouldSnapBackToHomeLocation = NO;
     
     self.homeLocation = nil;
     self.currentLocation = nil;
@@ -92,7 +92,7 @@
 
 
 
-#pragma mark- Interaction events
+#pragma mark- UI events
 
 - (void) handleDrag:(id)sender {
   CGPoint translatedPoint = [self.panGestureRecognizer translationInView:self.superview];
@@ -111,12 +111,22 @@
   
   // movement is currently in process
   if (self.panGestureRecognizer.state == UIGestureRecognizerStateChanged) {
-    [self.delegate draggableObjectDidMove:self];
+    if ([self.delegate respondsToSelector:@selector(draggableObjectDidMove:)])
+      [self.delegate draggableObjectDidMove:self];
     
     if (self.droppableLocations.count > 0) {
       for (SEDraggableLocation *location in self.droppableLocations) {
-        if ([location pointIsInsideLocation:myCoordinates])
-          [self.delegate draggableObject:self didMoveWithinLocation:location];
+      
+        CGPoint myLocalCoordinates = [self.superview convertPoint:myCoordinates toView:location];
+        if ([location pointIsInsideResponsiveBounds:myLocalCoordinates]) {
+          if ([self.delegate respondsToSelector:@selector(draggableObject:didMoveWithinLocation:)]) {
+            [location draggableObjectDidMoveWithinBounds:self];
+            [self.delegate draggableObject:self didMoveWithinLocation:location];
+          }
+        }
+        else {
+          [location draggableObjectDidMoveOutsideBounds:self];
+        }
       }
     }
   }
@@ -127,73 +137,101 @@
     SEDraggableLocation *dropLocation = nil;
     
     for (SEDraggableLocation *location in self.droppableLocations) {
-      if ([location pointIsInsideLocation:myCoordinates]) {
+      CGPoint myLocalCoordinates = [self.superview convertPoint:myCoordinates toView:location];
+      if ([location pointIsInsideResponsiveBounds:myLocalCoordinates]) {
         didStopMovingWithinLocation = YES;
         dropLocation = location;
         break;
       }
     }
     
-    self.previousLocation = self.currentLocation; // retain self.currentLocation
-    [self.currentLocation removeDraggableObject:self]; // release self.currentLocation
+    //self.previousLocation = self.currentLocation; // retain self.currentLocation
+    //[self.currentLocation removeDraggableObject:self]; // release self.currentLocation
     
     if (didStopMovingWithinLocation) {
-      [self.delegate draggableObjectDidStopMoving:self];
-      [dropLocation draggableObjectWasDroppedInside:self];
-      [self.delegate draggableObject:self didStopMovingWithinLocation:dropLocation];
+      if ([self.delegate respondsToSelector:@selector(draggableObjectDidStopMoving:)])
+        [self.delegate draggableObjectDidStopMoving:self];
+      
+      // @@TODO: should not hard-code "yes" here
+      [dropLocation draggableObjectWasDroppedInside:self animated:YES];
+      
+      if ([self.delegate respondsToSelector:@selector(draggableObject:didStopMovingWithinLocation:)])
+        [self.delegate draggableObject:self didStopMovingWithinLocation:dropLocation];
     }
     else {
-      if (self.shouldSnapBackToHomeFrame)
-        [self snapBackToHomeFrame];
+      if (self.shouldSnapBackToHomeLocation) {
+        // @@TODO: should not hard-code "yes" here
+        [self askToSnapBackToLocation:self.homeLocation animated:YES];
+      }
     }
     
   }
 }
 
-- (void) draggableLocationDidRefuseDrop:(SEDraggableLocation *)location {
-  if (self.shouldSnapBackToHomeFrame)
-    [self snapBackToHomeFrame];
+
+
+#pragma mark- SEDraggableLocationClient (notifications about the location's decision)
+
+- (void) draggableLocation:(SEDraggableLocation *)location
+            didAllowEntry:(SEDraggableLocationEntryMethod)entryMethod
+                  animated:(BOOL)animated {
+  
 }
 
-- (void) snapCenterToPoint:(CGPoint)point withAnimationID:(NSString *)animationID andContext:(void *)context {
-  if (animationID == nil)
-    animationID = @"iconSnap";
+- (void) draggableLocation:(SEDraggableLocation *)location
+            didRefuseEntry:(SEDraggableLocationEntryMethod)entryMethod
+                  animated:(BOOL)animated {
   
-  /*** begin animation block ***/
-  [UIView beginAnimations:animationID context:context];
-  
-  if ([self.delegate respondsToSelector:@selector(draggableObject:didBeginSnapAnimationWithID:andContext:)])
-    [self.delegate draggableObject:self didBeginSnapAnimationWithID:animationID andContext:context];
-  
-  // set icon animation delegate
-  [UIView setAnimationDelegate:self];
-  [UIView setAnimationDidStopSelector:@selector(iconSnapAnimationDidStop:finished:context:)];
-  [UIView setAnimationDuration:0.35f];
-  [UIView setAnimationCurve:UIViewAnimationCurveEaseOut];
-  [self setCenter:point];
-  [UIView commitAnimations];
-  /*** end animation block ***/
-}
-
-- (void) snapBackToHomeFrame {
-  if ([self.delegate respondsToSelector:@selector(draggableObjectWillSnapBackToHomeFrame:)])
-    [self.delegate draggableObjectWillSnapBackToHomeFrame:self];
-  
-  [self.homeLocation snapDraggableIntoBounds:self];
-}
-
-- (void) iconSnapAnimationDidStop:(NSString *)animationID finished:(NSNumber *)finished context:(void *)_context {
-  if ([animationID isEqualToString:@"snapBackToHomeFrame"]) {
-    self.currentLocation = self.homeLocation;
+  if (entryMethod == SEDraggableLocationEntryMethodWasDropped && self.shouldSnapBackToHomeLocation) {
+    [self askToEnterLocation:self.homeLocation entryMethod:entryMethod animated:animated];
+    // @@TODO: maybe also should handle snapping back to self.previousLocation rather than ONLY self.homeLocation
     
-    if ([self.delegate respondsToSelector:@selector(draggableObjectDidEndSnappingBackToHomeFrame:)])
-      [self.delegate draggableObjectDidEndSnappingBackToHomeFrame:self];
+    // @@TODO: completion monitor / delegate notification
+  }
+  else if (entryMethod == SEDraggableLocationEntryMethodWantsToSnapBack) {
+    // what's a girl to do? :(
+  }
+}
+
+- (void) snapCenterToPoint:(CGPoint)point animated:(BOOL)animated completion:(void (^)(BOOL))completionBlock {
+  if (animated) {
+    __block SEDraggable *myself = self;
+    [UIView animateWithDuration:0.35f delay:0 options:UIViewAnimationOptionCurveEaseOut
+                     animations:^{
+                       [myself setCenter:point];
+                     }
+                     completion:completionBlock];
   }
   else {
-    if ([self.delegate respondsToSelector:@selector(draggableObject:didEndSnapAnimationWithID:andContext:)])
-      [self.delegate draggableObject:self didEndSnapAnimationWithID:animationID andContext:_context];
+    self.center = point;
+    if (completionBlock != nil)
+      completionBlock(YES);
   }
 }
+
+#pragma mark - Requesting entry
+
+#pragma mark -- Main method
+
+- (void) askToEnterLocation:(SEDraggableLocation *)location entryMethod:(SEDraggableLocationEntryMethod)entryMethod animated:(BOOL)animated {
+  
+  if ([self.delegate respondsToSelector:@selector(draggableObject:askedToSnapBackToLocation:)])
+    [self.delegate draggableObject:self askedToSnapBackToLocation:self.homeLocation];
+  
+  [location draggableObject:self wantsToEnterLocationWithEntryMethod:entryMethod animated:animated];
+}
+
+#pragma mark -- Convenience methods
+
+- (void) askToDropIntoLocation:(SEDraggableLocation *)location animated:(BOOL)animated {
+  [self askToEnterLocation:location entryMethod:SEDraggableLocationEntryMethodWasDropped animated:animated];
+}
+
+- (void) askToSnapBackToLocation:(SEDraggableLocation *)location animated:(BOOL)animated {
+  [self askToEnterLocation:location entryMethod:SEDraggableLocationEntryMethodWantsToSnapBack animated:animated];  
+}
+
+
 
 
 #pragma mark- NSCoding
@@ -205,7 +243,7 @@
   [encoder encodeObject:self.homeLocation forKey:kHOME_LOCATION_KEY];
   [encoder encodeObject:self.previousLocation forKey:kPREVIOUS_LOCATION_KEY];
   [encoder encodeObject:self.droppableLocations forKey:kDROPPABLE_LOCATIONS_KEY];
-  [encoder encodeBool:self.shouldSnapBackToHomeFrame forKey:kSHOULD_SNAP_BACK_TO_HOME_FRAME_KEY];
+  [encoder encodeBool:self.shouldSnapBackToHomeLocation forKey:kSHOULD_SNAP_BACK_TO_HOME_FRAME_KEY];
   [encoder encodeFloat:firstX forKey:kFIRST_X_KEY];
   [encoder encodeFloat:firstY forKey:kFIRST_Y_KEY];
 }
@@ -217,7 +255,7 @@
     self.homeLocation = [decoder decodeObjectForKey:kHOME_LOCATION_KEY];
     self.previousLocation = [decoder decodeObjectForKey:kPREVIOUS_LOCATION_KEY];
     self.droppableLocations = [decoder decodeObjectForKey:kDROPPABLE_LOCATIONS_KEY];
-    self.shouldSnapBackToHomeFrame = [decoder decodeBoolForKey:kSHOULD_SNAP_BACK_TO_HOME_FRAME_KEY];
+    self.shouldSnapBackToHomeLocation = [decoder decodeBoolForKey:kSHOULD_SNAP_BACK_TO_HOME_FRAME_KEY];
     firstX = [decoder decodeFloatForKey:kFIRST_X_KEY];
     firstY = [decoder decodeFloatForKey:kFIRST_Y_KEY];
   }

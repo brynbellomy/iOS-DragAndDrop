@@ -19,11 +19,12 @@
       - (void) draggableObject:(SEDraggable *)object didMoveWithinLocation:(SEDraggableLocation *)location;
       - (void) draggableObject:(SEDraggable *)object didStopMovingWithinLocation:(SEDraggableLocation *)location;
 
-      - (void) draggableObjectWillSnapBackToHomeFrame:(SEDraggable *)object;
-      - (void) draggableObjectDidEndSnappingBackToHomeFrame:(SEDraggable *)object;
-
-      - (void) draggableObject:(SEDraggable *)object didBeginSnapAnimationWithID:(NSString *)animationID andContext:(void *)context;
-      - (void) draggableObject:(SEDraggable *)object didEndSnapAnimationWithID:(NSString *)animationID andContext:(void *)context; // it's up to the delegate to set draggable.currentLocation when the delegate initiates the animation and it's appropriate to do so
+      - (void) draggableObject:(SEDraggable *)object askedToSnapBackToLocation:(SEDraggableLocation *)location;
+      - (void) draggableObject:(SEDraggable *)object finishedSnappingBackToLocation:(SEDraggableLocation *)location;
+      - (void) draggableObject:(SEDraggable *)object askedToDropIntoLocation:(SEDraggableLocation *)location;
+      - (void) draggableObject:(SEDraggable *)object finishedDroppingIntoLocation:(SEDraggableLocation *)location;
+      - (void) draggableObject:(SEDraggable *)object willBeAddedToLocation:(SEDraggableLocation *)location;
+      - (void) draggableObject:(SEDraggable *)object finishedBeingAddedToLocation:(SEDraggableLocation *)location;
 
 @end
 
@@ -32,7 +33,7 @@
 #define kHOME_LOCATION_KEY                      @"homeLocation"
 #define kPREVIOUS_LOCATION_KEY                  @"previousLocation"
 #define kDROPPABLE_LOCATIONS_KEY                @"droppableLocations"
-#define kSHOULD_SNAP_BACK_TO_HOME_FRAME_KEY 		@"shouldSnapBackToHomeFrame"
+#define kSHOULD_SNAP_BACK_TO_HOME_FRAME_KEY 		@"shouldSnapBackToHomeLocation"
 #define kFIRST_X_KEY                            @"firstX"
 #define kFIRST_Y_KEY                            @"firstY"
 
@@ -43,7 +44,7 @@
   SEDraggableLocation *_previousLocation;
   NSMutableSet *_droppableLocations;
   UIPanGestureRecognizer *_panGestureRecognizer;
-  BOOL _shouldSnapBackToHomeFrame;
+  BOOL _shouldSnapBackToHomeLocation;
   CGFloat firstX;
   CGFloat firstY;
   id <SEDraggableEventResponder> __unsafe_unretained _delegate;
@@ -55,15 +56,18 @@
 @property (nonatomic, readwrite, strong) SEDraggableLocation *previousLocation;
 @property (nonatomic, readwrite, strong) NSMutableSet *droppableLocations;
 @property (nonatomic, readwrite, unsafe_unretained) id <SEDraggableEventResponder> delegate;
-@property (nonatomic, readwrite) BOOL shouldSnapBackToHomeFrame;
+@property (nonatomic, readwrite) BOOL shouldSnapBackToHomeLocation;
 @property (nonatomic, readonly) CGFloat firstX;
 @property (nonatomic, readonly) CGFloat firstY;
 
 - (id) initWithImage:(UIImage *)image andSize:(CGSize)size;
 - (id) initWithImageView:(UIImageView *)imageView;
 - (void) addAllowedDropLocation:(SEDraggableLocation *)location;
-- (void) snapCenterToPoint:(CGPoint)point withAnimationID:(NSString *)animationID andContext:(void *)context;
-- (void) snapBackToHomeFrame;
+- (void) snapCenterToPoint:(CGPoint)point animated:(BOOL)animated completion:(void (^)(BOOL))completionBlock;
+
+- (void) askToDropIntoLocation:(SEDraggableLocation *)location animated:(BOOL)animated;
+- (void) askToSnapBackToLocation:(SEDraggableLocation *)location animated:(BOOL)animated;
+
 
 @end
 
