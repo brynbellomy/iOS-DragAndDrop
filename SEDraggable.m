@@ -2,7 +2,7 @@
 //  SEDraggable.m
 //  SEDraggable
 //
-//  Created by bryn austin bellomy on 10/23/11.
+//  Created by bryn austin bellomy <bryn@signals.io> on 10/23/11.
 //  Copyright (c) 2012 signals.io» (signalenvelope LLC). All rights reserved.
 //
 
@@ -11,13 +11,16 @@
 
 @implementation UIView (Helpr)
 - (CGPoint) getCenterInWindowCoordinates {
-  return [self.superview convertPoint:self.center toView:nil];
+  if (self.superview != nil)
+    return [self.superview convertPoint:self.center toView:nil];
+  else
+    return self.center;
 }
 @end
 
 @interface SEDraggable ()
 - (void) handleDrag:(id)sender;
-- (void) askToEnterLocation:(SEDraggableLocation *)location entryMethod:(SEDraggableLocationEntryMethod)entryMethod animated:(BOOL)animated;
+- (BOOL) askToEnterLocation:(SEDraggableLocation *)location entryMethod:(SEDraggableLocationEntryMethod)entryMethod animated:(BOOL)animated;
 @end
 
 @implementation SEDraggable
@@ -144,9 +147,13 @@
     for (SEDraggableLocation *location in self.droppableLocations) {
       CGPoint myWindowCoordinates = [self.superview convertPoint:myCoordinates toView:nil];
       if ([location pointIsInsideResponsiveBounds:myWindowCoordinates]) {
-        didStopMovingWithinLocation = YES;
-        dropLocation = location;
-        break;
+        // the draggable will ask for entry into every draggable location whose bounds it is inside until the first YES, at which point the search stops
+        BOOL allowedEntry = [self askToEnterLocation:location entryMethod:SEDraggableLocationEntryMethodWasDropped animated:YES];
+        if (allowedEntry) {
+          didStopMovingWithinLocation = YES;
+          dropLocation = location;
+          break;
+        }
       }
     }
     
@@ -154,8 +161,7 @@
       if ([self.delegate respondsToSelector:@selector(draggableObjectDidStopMoving:)])
         [self.delegate draggableObjectDidStopMoving:self];
       
-      // @@TODO: should not hard-code "yes" here
-      [dropLocation draggableObjectWasDroppedInside:self animated:YES];
+//      [dropLocation draggableObjectWasDroppedInside:self animated:YES];
       
       if ([self.delegate respondsToSelector:@selector(draggableObject:didStopMovingWithinLocation:)])
         [self.delegate draggableObject:self didStopMovingWithinLocation:dropLocation];
@@ -177,18 +183,21 @@
 - (void) draggableLocation:(SEDraggableLocation *)location
             didAllowEntry:(SEDraggableLocationEntryMethod)entryMethod
                   animated:(BOOL)animated {
-  
+
+  if ([self.delegate respondsToSelector:@selector(draggableObject:finishedEnteringLocation:withEntryMethod:)])
+    [self.delegate draggableObject:self finishedEnteringLocation:location withEntryMethod:entryMethod];
 }
 
 - (void) draggableLocation:(SEDraggableLocation *)location
             didRefuseEntry:(SEDraggableLocationEntryMethod)entryMethod
                   animated:(BOOL)animated {
   
+  if ([self.delegate respondsToSelector:@selector(draggableObject:failedToEnterLocation:withEntryMethod:)])
+    [self.delegate draggableObject:self failedToEnterLocation:location withEntryMethod:entryMethod];
+  
   if (entryMethod == SEDraggableLocationEntryMethodWasDropped && self.shouldSnapBackToHomeLocation) {
     [self askToEnterLocation:self.homeLocation entryMethod:entryMethod animated:animated];
     // @@TODO: maybe also should handle snapping back to self.previousLocation rather than ONLY self.homeLocation
-    
-    // @@TODO: completion monitor / delegate notification
   }
   else if (entryMethod == SEDraggableLocationEntryMethodWantsToSnapBack) {
     // what's a girl to do? :(
@@ -215,12 +224,20 @@
 
 #pragma mark -- Main method
 
-- (void) askToEnterLocation:(SEDraggableLocation *)location entryMethod:(SEDraggableLocationEntryMethod)entryMethod animated:(BOOL)animated {
+- (BOOL) askToEnterLocation:(SEDraggableLocation *)location entryMethod:(SEDraggableLocationEntryMethod)entryMethod animated:(BOOL)animated {
   
-  if ([self.delegate respondsToSelector:@selector(draggableObject:askedToSnapBackToLocation:)])
-    [self.delegate draggableObject:self askedToSnapBackToLocation:self.homeLocation];
+  BOOL shouldAsk = YES;
+  if ([self.delegate respondsToSelector:@selector(draggableObject:shouldAskToEnterLocation:withEntryMethod:)]) {
+    shouldAsk = [self.delegate draggableObject:self shouldAskToEnterLocation:location withEntryMethod:entryMethod];
+  }
   
-  [location draggableObject:self wantsToEnterLocationWithEntryMethod:entryMethod animated:animated];
+  if (shouldAsk == YES) {
+    if ([self.delegate respondsToSelector:@selector(draggableObject:willAskToEnterLocation:withEntryMethod:)])
+      [self.delegate draggableObject:self willAskToEnterLocation:location withEntryMethod:entryMethod];
+    
+    return [location draggableObject:self wantsToEnterLocationWithEntryMethod:entryMethod animated:animated];
+  }
+  return NO;
 }
 
 #pragma mark -- Convenience methods
@@ -238,28 +255,40 @@
 
 #pragma mark- NSCoding
 
-- (void) encodeWithCoder:(NSCoder *)encoder {
+- (void)encodeWithCoder:(NSCoder *)encoder {
   [super encodeWithCoder:encoder];
   [encoder encodeConditionalObject:self.panGestureRecognizer forKey:kPAN_GESTURE_RECOGNIZER_KEY];
   [encoder encodeObject:self.currentLocation forKey:kCURRENT_LOCATION_KEY];
   [encoder encodeObject:self.homeLocation forKey:kHOME_LOCATION_KEY];
   [encoder encodeObject:self.previousLocation forKey:kPREVIOUS_LOCATION_KEY];
   [encoder encodeObject:self.droppableLocations forKey:kDROPPABLE_LOCATIONS_KEY];
-  [encoder encodeBool:self.shouldSnapBackToHomeLocation forKey:kSHOULD_SNAP_BACK_TO_HOME_FRAME_KEY];
-  [encoder encodeFloat:firstX forKey:kFIRST_X_KEY];
-  [encoder encodeFloat:firstY forKey:kFIRST_Y_KEY];
+  [encoder encodeObject:self.delegate forKey:kDELEGATE_KEY];
+  [encoder encodeBool:self.shouldSnapBackToHomeLocation forKey:kSHOULD_SNAP_BACK_TO_HOME_LOCATION_KEY];
+  [encoder encodeFloat:self.firstX forKey:kFIRST_X_KEY];
+  [encoder encodeFloat:self.firstY forKey:kFIRST_Y_KEY];
 }
 
-- (id) initWithCoder:(NSCoder *)decoder {
-  if (self = [super initWithCoder:decoder]) {
-    self.panGestureRecognizer = [decoder decodeObjectForKey:kPAN_GESTURE_RECOGNIZER_KEY];
-    self.currentLocation = [decoder decodeObjectForKey:kCURRENT_LOCATION_KEY];
-    self.homeLocation = [decoder decodeObjectForKey:kHOME_LOCATION_KEY];
-    self.previousLocation = [decoder decodeObjectForKey:kPREVIOUS_LOCATION_KEY];
-    self.droppableLocations = [decoder decodeObjectForKey:kDROPPABLE_LOCATIONS_KEY];
-    self.shouldSnapBackToHomeLocation = [decoder decodeBoolForKey:kSHOULD_SNAP_BACK_TO_HOME_FRAME_KEY];
-    firstX = [decoder decodeFloatForKey:kFIRST_X_KEY];
-    firstY = [decoder decodeFloatForKey:kFIRST_Y_KEY];
+- (id)initWithCoder:(NSCoder *)decoder {
+  self = [super initWithCoder:decoder];
+  if (self) {
+    if ([decoder containsValueForKey:kPAN_GESTURE_RECOGNIZER_KEY])
+      self.panGestureRecognizer = [decoder decodeObjectForKey:kPAN_GESTURE_RECOGNIZER_KEY];
+    if ([decoder containsValueForKey:kCURRENT_LOCATION_KEY])
+      self.currentLocation = [decoder decodeObjectForKey:kCURRENT_LOCATION_KEY];
+    if ([decoder containsValueForKey:kHOME_LOCATION_KEY])
+      self.homeLocation = [decoder decodeObjectForKey:kHOME_LOCATION_KEY];
+    if ([decoder containsValueForKey:kPREVIOUS_LOCATION_KEY])
+      self.previousLocation = [decoder decodeObjectForKey:kPREVIOUS_LOCATION_KEY];
+    if ([decoder containsValueForKey:kDROPPABLE_LOCATIONS_KEY])
+      self.droppableLocations = [decoder decodeObjectForKey:kDROPPABLE_LOCATIONS_KEY];
+    if ([decoder containsValueForKey:kDELEGATE_KEY])
+      self.delegate = [decoder decodeObjectForKey:kDELEGATE_KEY];
+    if ([decoder containsValueForKey:kSHOULD_SNAP_BACK_TO_HOME_LOCATION_KEY])
+      self.shouldSnapBackToHomeLocation = [decoder decodeBoolForKey:kSHOULD_SNAP_BACK_TO_HOME_LOCATION_KEY];
+    if ([decoder containsValueForKey:kFIRST_X_KEY])
+      firstX = [decoder decodeFloatForKey:kFIRST_X_KEY];
+    if ([decoder containsValueForKey:kFIRST_Y_KEY])
+      firstY = [decoder decodeFloatForKey:kFIRST_Y_KEY];
   }
   return self;
 }

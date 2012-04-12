@@ -2,13 +2,11 @@
 //  SEDraggableLocation.h
 //  SEDraggable
 //
-//  Created by bryn austin bellomy on 10/24/11.
+//  Created by bryn austin bellomy <bryn@signals.io> on 10/24/11.
 //  Copyright (c) 2012 signals.io» (signalenvelope LLC). All rights reserved.
 //
 
 #import <Foundation/Foundation.h>
-
-
 
 typedef enum {
   SEDraggableLocationEntryMethodWasDropped = 1, // refusable request from the user
@@ -24,6 +22,7 @@ typedef enum {
   @optional
     - (void) draggableLocation:(SEDraggableLocation *)location didAcceptObject:(SEDraggable *)object entryMethod:(SEDraggableLocationEntryMethod)method;
     - (void) draggableLocation:(SEDraggableLocation *)location didRefuseObject:(SEDraggable *)object entryMethod:(SEDraggableLocationEntryMethod)method;
+    - (void) draggableLocation:(SEDraggableLocation *)location didMoveObject:(SEDraggable *)object;
     - (void) draggableLocationDidRecalculateObjectPositions:(SEDraggableLocation *)location;
     - (void) draggableObject:(SEDraggable *)object wasRemovedFromLocation:(SEDraggableLocation *)location;
     - (void) draggableObject:(SEDraggable *)object wasAddedToLocation:(SEDraggableLocation *)location;
@@ -37,29 +36,33 @@ typedef enum {
 @end
 
 
-
-#define kOBJECT_WIDTH_KEY 						@"objectWidth"
+// NSCoding constants
+#define kOBJECT_WIDTH_KEY             @"objectWidth"
 #define kOBJECT_HEIGHT_KEY 						@"objectHeight"
-#define kMARGIN_LEFT_KEY 						@"marginLeft"
+#define kMARGIN_LEFT_KEY              @"marginLeft"
 #define kMARGIN_RIGHT_KEY 						@"marginRight"
-#define kMARGIN_TOP_KEY 						@"marginTop"
+#define kMARGIN_TOP_KEY               @"marginTop"
 #define kMARGIN_BOTTOM_KEY 						@"marginBottom"
-#define kMARGIN_BETWEEN_X_KEY 						@"marginBetweenX"
-#define kMARGIN_BETWEEN_Y_KEY 						@"marginBetweenY"
-#define kRANDOM_ARRANGEMENT_OFFSET_MULTIPLIER_KEY 						@"randomArrangementOffsetMultiplier"
-#define kRESPONSIVE_BOUNDS_KEY 						@"responsiveBounds"
-#define kOBJECT_GUTTER_BOUNDS_KEY 						@"objectGutterBounds"
-#define kSHOULD_ACCEPT_DROPPED_OBJECTS_KEY 						@"shouldAcceptDroppedObjects"
-#define kSHOULD_AUTOMATICALLY_RECALCULATE_OBJECT_POSITIONS_KEY 						@"shouldKeepObjectsArranged"
-#define kSHOULD_ANIMATE_OBJECT_ADJUSTMENTS_KEY 						@"shouldAnimateObjectAdjustments"
-#define kANIMATION_DURATION_KEY 						@"animationDuration"
-#define kANIMATION_DELAY_KEY 						@"animationDelay"
-#define kANIMATION_OPTIONS_KEY 						@"animationOptions"
-#define kFILL_HORIZONTALLY_FIRST_KEY 						@"fillHorizontallyFirst"
-#define kALLOW_ROWS_KEY 						@"allowRows"
+#define kMARGIN_BETWEEN_X_KEY 				@"marginBetweenX"
+#define kMARGIN_BETWEEN_Y_KEY 				@"marginBetweenY"
+#define kRANDOM_ARRANGEMENT_OFFSET_MULTIPLIER_KEY @"randomArrangementOffsetMultiplier"
+#define kRESPONSIVE_BOUNDS_KEY 				@"responsiveBounds"
+#define kOBJECT_GUTTER_BOUNDS_KEY 		@"objectGutterBounds"
+#define kSHOULD_ACCEPT_DROPPED_OBJECTS_KEY 	@"shouldAcceptDroppedObjects"
+#define kSHOULD_ACCEPT_OBJECTS_SNAPPING_BACK_KEY 						@"shouldAcceptObjectsSnappingBack"
+#define kSHOULD_KEEP_OBJECTS_ARRANGED_KEY 						@"shouldKeepObjectsArranged"
+#define kSHOULD_HIGHLIGHT_ON_DRAG_OVER_KEY 						@"shouldHighlightOnDragOver"
+#define kHIGHLIGHT_COLOR_KEY 						@"highlightColor"
+#define kHIGHLIGHT_OPACITY_KEY 						@"highlightOpacity"
+#define kSHOULD_ANIMATE_OBJECT_ADJUSTMENTS_KEY 	@"shouldAnimateObjectAdjustments"
+#define kANIMATION_DURATION_KEY 			@"animationDuration"
+#define kANIMATION_DELAY_KEY 					@"animationDelay"
+#define kANIMATION_OPTIONS_KEY 				@"animationOptions"
+#define kFILL_HORIZONTALLY_FIRST_KEY 	@"fillHorizontallyFirst"
+#define kALLOW_ROWS_KEY               @"allowRows"
 #define kALLOW_COLUMNS_KEY 						@"allowColumns"
-#define kDELEGATE_KEY 						@"delegate"
-#define kCONTAINED_OBJECTS_KEY 						@"containedObjects"
+#define kDELEGATE_KEY                 @"delegate"
+#define kCONTAINED_OBJECTS_KEY 				@"containedObjects"
 
 @interface SEDraggableLocation : UIView <NSCoding>
 
@@ -96,12 +99,12 @@ typedef enum {
 - (BOOL) pointIsInsideResponsiveBounds:(CGPoint)point;
 
 // this method expresses a draggable attempting to enter a location
-- (void) draggableObject:(SEDraggable *)draggable wantsToEnterLocationWithEntryMethod:(SEDraggableLocationEntryMethod)entryMethod animated:(BOOL)animated;
+- (BOOL) draggableObject:(SEDraggable *)draggable wantsToEnterLocationWithEntryMethod:(SEDraggableLocationEntryMethod)entryMethod animated:(BOOL)animated;
+
 // these are convenience methods for purposes of readability; they proxy to the above method
-- (void) draggableObjectWantsToSnapBack:(SEDraggable *)draggable animated:(BOOL)animated;
-- (void) draggableObjectWasDroppedInside:(SEDraggable *)draggable animated:(BOOL)animated;
+- (BOOL) draggableObjectWantsToSnapBack:(SEDraggable *)draggable animated:(BOOL)animated;
+- (BOOL) draggableObjectWasDroppedInside:(SEDraggable *)draggable animated:(BOOL)animated;
 - (void) addDraggableObject:(SEDraggable *)draggable animated:(BOOL)animated;
-- (void) draggableObjectWasForciblyAdded:(SEDraggable *)draggable animated:(BOOL)animated;
 
 // movement handlers
 - (void) draggableObjectDidMoveWithinBounds:(SEDraggable *)draggable;

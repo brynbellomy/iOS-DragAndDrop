@@ -2,13 +2,12 @@
 //  SEDraggableLocation.m
 //  SEDraggable
 //
-//  Created by bryn austin bellomy on 10/24/11.
+//  Created by bryn austin bellomy <bryn@signals.io> on 10/24/11.
 //  Copyright (c) 2012 signals.io» (signalenvelope LLC). All rights reserved.
 //
 
 #import "SEDraggableLocation.h"
 #import "SEDraggable.h"
-#import "Common.h"
 
 const NSInteger SEDraggableLocationPositionDetermineAutomatically = -1;
 
@@ -20,7 +19,6 @@ const NSInteger SEDraggableLocationPositionDetermineAutomatically = -1;
 - (void)    refuseDraggableObject:(SEDraggable *)draggable entryMethod:(SEDraggableLocationEntryMethod)entryMethod animated:(BOOL)animated;
 - (CGPoint) calculateCenterOfDraggableObject:(SEDraggable *)object inPosition:(NSInteger)position;
 - (CGPoint) getAcceptableLocationForDraggableObject:(SEDraggable *)object inPosition:(NSInteger)position;
-- (CGPoint) calculateNearestPointInGutterBoundsForDraggableObject:(SEDraggable *)draggable;
 
 @end
 
@@ -78,7 +76,7 @@ const NSInteger SEDraggableLocationPositionDetermineAutomatically = -1;
   self.responsiveBounds.autoresizingMask = UIViewAutoresizingFlexibleBottomMargin | UIViewAutoresizingFlexibleTopMargin | UIViewAutoresizingFlexibleRightMargin | UIViewAutoresizingFlexibleLeftMargin | UIViewAutoresizingFlexibleHeight | UIViewAutoresizingFlexibleWidth;
   [self addSubview:self.responsiveBounds];
   
-  self.shouldHighlightOnDragOver = NO;
+  self.shouldHighlightOnDragOver = YES;
   self.highlightOpacity = 1.0f;
   self.highlightView = [[UIView alloc] initWithFrame:localFrame];
   self.highlightView.contentMode = UIViewContentModeScaleToFill;
@@ -118,7 +116,7 @@ const NSInteger SEDraggableLocationPositionDetermineAutomatically = -1;
 
 #pragma mark- Permission to enter location
 
-- (void) draggableObject:(SEDraggable *)draggable wantsToEnterLocationWithEntryMethod:(SEDraggableLocationEntryMethod)entryMethod animated:(BOOL)animated {
+- (BOOL) draggableObject:(SEDraggable *)draggable wantsToEnterLocationWithEntryMethod:(SEDraggableLocationEntryMethod)entryMethod animated:(BOOL)animated {
   
   BOOL allow = YES; // default to allow
   
@@ -139,16 +137,18 @@ const NSInteger SEDraggableLocationPositionDetermineAutomatically = -1;
   
   if (allow) [self acceptDraggableObject:draggable entryMethod:entryMethod animated:animated];
   else       [self refuseDraggableObject:draggable entryMethod:entryMethod animated:animated];
+  
+  return allow;
 }
 
 #pragma mark -- Convenience methods
 
-- (void) draggableObjectWantsToSnapBack:(SEDraggable *)draggable animated:(BOOL)animated {
-  [self draggableObject:draggable wantsToEnterLocationWithEntryMethod:SEDraggableLocationEntryMethodWantsToSnapBack animated:animated];
+- (BOOL) draggableObjectWantsToSnapBack:(SEDraggable *)draggable animated:(BOOL)animated {
+  return [self draggableObject:draggable wantsToEnterLocationWithEntryMethod:SEDraggableLocationEntryMethodWantsToSnapBack animated:animated];
 }
 
-- (void) draggableObjectWasDroppedInside:(SEDraggable *)draggable animated:(BOOL)animated {
-  [self draggableObject:draggable wantsToEnterLocationWithEntryMethod:SEDraggableLocationEntryMethodWasDropped animated:animated];
+- (BOOL) draggableObjectWasDroppedInside:(SEDraggable *)draggable animated:(BOOL)animated {
+  return [self draggableObject:draggable wantsToEnterLocationWithEntryMethod:SEDraggableLocationEntryMethodWasDropped animated:animated];
 }
 
 - (void) addDraggableObject:(SEDraggable *)draggable animated:(BOOL)animated {
@@ -180,6 +180,7 @@ const NSInteger SEDraggableLocationPositionDetermineAutomatically = -1;
 
 - (CGPoint) calculateCenterOfDraggableObject:(SEDraggable *)object inPosition:(NSInteger)position {
   CGPoint point;
+
   CGRect rect = self.objectGutterBounds.frame;
   int objectsPerRow = floor(((rect.size.width - self.marginLeft - self.marginRight - (2 * self.marginBetweenX)) / self.objectWidth));
   int objectsPerCol = floor(((rect.size.height - self.marginTop - self.marginBottom - (2 * self.marginBetweenY)) / self.objectHeight));
@@ -204,17 +205,6 @@ const NSInteger SEDraggableLocationPositionDetermineAutomatically = -1;
   return point;
 }
 
-- (CGPoint) calculateNearestPointInGutterBoundsForDraggableObject:(SEDraggable *)draggable {
-  // @@TODO
-//  CGPoint topLeftCorner = {0};
-//  topLeftCorner.x = draggable.center.x - (draggable.bounds.size.width / 2);
-//  topLeftCorner.y = draggable.center.y - (draggable.bounds.size.height / 2);
-
-  //if (self pointInside:<#(CGPoint)#> withEvent:<#(UIEvent *)#>
-  
-  return draggable.center;
-}
-
 - (CGPoint) getAcceptableLocationForDraggableObject:(SEDraggable *)object inPosition:(NSInteger)position {
   if (position == SEDraggableLocationPositionDetermineAutomatically) {
     if (self.shouldKeepObjectsArranged) {
@@ -223,19 +213,15 @@ const NSInteger SEDraggableLocationPositionDetermineAutomatically = -1;
     }
     else {
       // return the center point
-      return [self getCenterInWindowCoordinates];
+      CGPoint p = [object getCenterInWindowCoordinates];
+      if (CGPointEqualToPoint(p, CGPointZero))
+        return [self getCenterInWindowCoordinates];
+      else
+        return p;
     }
   }
   else {
-    if (self.shouldKeepObjectsArranged) {
-      position = self.containedObjects.count - 1;
-      return [self calculateCenterOfDraggableObject:object inPosition:position];
-    }
-    else {
-      // @@TODO: ??
-      // for now gonna return the center point
-      return [self getCenterInWindowCoordinates];
-    }
+    return [self calculateCenterOfDraggableObject:object inPosition:position];
   }
 }
 
@@ -243,19 +229,23 @@ const NSInteger SEDraggableLocationPositionDetermineAutomatically = -1;
   __block SEDraggableLocation *myself = self;
   
   void (^blockRecalculate)() = ^{
-    NSInteger index = 0;
+    NSUInteger index = 0;
     unsigned int iseed = (unsigned int)time(NULL);
     srand(iseed);
     double max = RAND_MAX;
     double irand;
-    double mult = self.randomArrangementOffsetMultiplier;
+    double mult = myself.randomArrangementOffsetMultiplier;
     for (SEDraggable *object in myself.containedObjects) {
-      CGPoint center = [myself getAcceptableLocationForDraggableObject:object inPosition:index++];
+      CGPoint center = [myself getAcceptableLocationForDraggableObject:object inPosition:index];
+      index++;
       irand = (double)rand();
       center.x += (CGFloat)((irand / max) * mult) - (mult / 2);
       center.y += (CGFloat)((irand / max) * mult) - (mult / 2);
       
       [object setCenter:center];
+      
+      if ([myself.delegate respondsToSelector:@selector(draggableLocation:didMoveObject:)])
+        [myself.delegate draggableLocation:myself didMoveObject:object];
     }
   };
   
@@ -285,25 +275,59 @@ const NSInteger SEDraggableLocationPositionDetermineAutomatically = -1;
 
 #pragma mark- Entry decision handlers
 
+/**
+ * If you pass a draggable that:
+ *   1) has superview == nil
+ *       a) but has coordinates in self.center:
+ *          -- it will be assumed that those coordinates are already in the coordinate system of this SEDraggableLocation
+ *       b) does not have coordinates in self.center:
+ *          -- it will be up to the SEDraggableLocation (or subclass) to decide upon good coordinates (in getAcceptableLocationForDraggableObject:inPosition:)
+ *   2) has a superview, i.e., superview != nil
+ *       a) -- it's assumed that it will have coordinates, so its movement will be calculated by converting the draggable's 'center' property in the superview's coordinate system to this SEDraggableLocation's coordinate system
+ */
 - (void) acceptDraggableObject:(SEDraggable *)draggable
                    entryMethod:(SEDraggableLocationEntryMethod)entryMethod
                       animated:(BOOL)animated {
+  /**
+   * either:
+   * 1. (existing draggable case) the draggable has a superview (i.e. previous location) and also coordinates,
+   * 2. (new draggable case) the draggable has just been newly added and has no superview and no coordinates, or
+   * 3. (loading a saved draggable case) the draggable has been newly added and has no superview but does have coordinates
+   */
   
-  // convert 'center' over to the receiver view's coordinate system in advance
-  CGPoint draggableCenterInWindowCoords = [draggable getCenterInWindowCoordinates];
-  CGPoint draggableCenterInReceiverCoords = [self convertPoint:draggableCenterInWindowCoords fromView:nil];
-  draggable.center = draggableCenterInReceiverCoords;
+  // existing draggable case
+  if (entryMethod != SEDraggableLocationEntryMethodWasAdded && draggable.superview != nil) {
+    // convert 'center' over to the receiver view's coordinate system in advance
+    CGPoint draggableCenterInWindowCoords = [draggable getCenterInWindowCoordinates];
+    CGPoint draggableCenterInReceiverCoords = [self convertPoint:draggableCenterInWindowCoords fromView:nil];
+    draggable.center = draggableCenterInReceiverCoords;
+  }
+  // new draggable case
+  else if (entryMethod == SEDraggableLocationEntryMethodWasAdded && draggable.superview == nil && CGPointEqualToPoint(draggable.center, CGPointZero)) {
+    CGPoint draggableCenterInWindowCoords = draggable.center;
+    CGPoint draggableCenterInReceiverCoords = [self convertPoint:draggableCenterInWindowCoords fromView:nil];
+    draggable.center = draggableCenterInReceiverCoords;
+  }
+  // loading a saved draggable case
+  else if (entryMethod == SEDraggableLocationEntryMethodWasAdded && draggable.superview == nil && !CGPointEqualToPoint(draggable.center, CGPointZero)) {
+    // 'center' should be in the receiver's local coordinate system already, so no conversion is needed
+    // (no-op)
+  }
 
-  // @@TODO: this will cause retain cycles unless one side of the relationship is weak
-  [self.containedObjects addObject:draggable];
-  draggable.previousLocation = draggable.currentLocation;
-  draggable.currentLocation = self;
+  // @@TODO: fix! this will probably cause retain cycles unless one side of the relationship is weak mmMmMMMmMMmm
+  if (draggable.currentLocation != self) {
+    [self.containedObjects addObject:draggable];
+    draggable.previousLocation = draggable.currentLocation;
+    draggable.currentLocation = self;
+    [draggable.previousLocation removeDraggableObject:draggable];
+  }
   
   // add the draggable to its new parent view
   [self addSubview:draggable];
-  
+
   CGPoint destinationPointInWindowCoords = [self getAcceptableLocationForDraggableObject:draggable
                                                                               inPosition:SEDraggableLocationPositionDetermineAutomatically];
+
   CGPoint destinationPointInLocalCoords = [self convertPoint:destinationPointInWindowCoords fromView:nil];
   
   __block SEDraggableLocation *myself = self;
@@ -325,6 +349,7 @@ const NSInteger SEDraggableLocationPositionDetermineAutomatically = -1;
     [draggable snapCenterToPoint:destinationPointInLocalCoords animated:animated completion:completionBlock];
   }
   else {
+    draggable.center = destinationPointInLocalCoords;
     completionBlock(YES);
   }
 }
@@ -376,11 +401,15 @@ const NSInteger SEDraggableLocationPositionDetermineAutomatically = -1;
   [encoder encodeObject:self.responsiveBounds forKey:kRESPONSIVE_BOUNDS_KEY];
   [encoder encodeObject:self.objectGutterBounds forKey:kOBJECT_GUTTER_BOUNDS_KEY];
   [encoder encodeBool:self.shouldAcceptDroppedObjects forKey:kSHOULD_ACCEPT_DROPPED_OBJECTS_KEY];
-  [encoder encodeBool:self.shouldKeepObjectsArranged forKey:kSHOULD_AUTOMATICALLY_RECALCULATE_OBJECT_POSITIONS_KEY];
+  [encoder encodeBool:self.shouldAcceptObjectsSnappingBack forKey:kSHOULD_ACCEPT_OBJECTS_SNAPPING_BACK_KEY];
+  [encoder encodeBool:self.shouldKeepObjectsArranged forKey:kSHOULD_KEEP_OBJECTS_ARRANGED_KEY];
   [encoder encodeBool:self.shouldAnimateObjectAdjustments forKey:kSHOULD_ANIMATE_OBJECT_ADJUSTMENTS_KEY];
+  [encoder encodeBool:self.shouldHighlightOnDragOver forKey:kSHOULD_HIGHLIGHT_ON_DRAG_OVER_KEY];
+  [encoder encodeObject:self.highlightColor forKey:kHIGHLIGHT_COLOR_KEY];
+  [encoder encodeFloat:self.highlightOpacity forKey:kHIGHLIGHT_OPACITY_KEY];
   [encoder encodeFloat:self.animationDuration forKey:kANIMATION_DURATION_KEY];
   [encoder encodeFloat:self.animationDelay forKey:kANIMATION_DELAY_KEY];
-#warning //ivar named: _animationOptions  and of type: UIViewAnimationOptions -- TYPE_NOT_SUPPORTED
+#warning //ivar named: animationOptions  and of type: UIViewAnimationOptions -- TYPE_NOT_SUPPORTED
 #warning //[encoder encodeType(?):self.animationOptions forKey:kANIMATION_OPTIONS_KEY];
   [encoder encodeBool:self.fillHorizontallyFirst forKey:kFILL_HORIZONTALLY_FIRST_KEY];
   [encoder encodeBool:self.allowRows forKey:kALLOW_ROWS_KEY];
@@ -394,49 +423,57 @@ const NSInteger SEDraggableLocationPositionDetermineAutomatically = -1;
   if (self) {
     [self defaultAllOwnProperties];
     if ([decoder containsValueForKey:kOBJECT_WIDTH_KEY])
-      self.objectWidth = [decoder decodeFloatForKey:kOBJECT_WIDTH_KEY];
+        self.objectWidth = [decoder decodeFloatForKey:kOBJECT_WIDTH_KEY];
     if ([decoder containsValueForKey:kOBJECT_HEIGHT_KEY])
-      self.objectHeight = [decoder decodeFloatForKey:kOBJECT_HEIGHT_KEY];
+        self.objectHeight = [decoder decodeFloatForKey:kOBJECT_HEIGHT_KEY];
     if ([decoder containsValueForKey:kMARGIN_LEFT_KEY])
-      self.marginLeft = [decoder decodeFloatForKey:kMARGIN_LEFT_KEY];
+        self.marginLeft = [decoder decodeFloatForKey:kMARGIN_LEFT_KEY];
     if ([decoder containsValueForKey:kMARGIN_RIGHT_KEY])
-      self.marginRight = [decoder decodeFloatForKey:kMARGIN_RIGHT_KEY];
+        self.marginRight = [decoder decodeFloatForKey:kMARGIN_RIGHT_KEY];
     if ([decoder containsValueForKey:kMARGIN_TOP_KEY])
-      self.marginTop = [decoder decodeFloatForKey:kMARGIN_TOP_KEY];
+        self.marginTop = [decoder decodeFloatForKey:kMARGIN_TOP_KEY];
     if ([decoder containsValueForKey:kMARGIN_BOTTOM_KEY])
-      self.marginBottom = [decoder decodeFloatForKey:kMARGIN_BOTTOM_KEY];
+        self.marginBottom = [decoder decodeFloatForKey:kMARGIN_BOTTOM_KEY];
     if ([decoder containsValueForKey:kMARGIN_BETWEEN_X_KEY])
-      self.marginBetweenX = [decoder decodeFloatForKey:kMARGIN_BETWEEN_X_KEY];
+        self.marginBetweenX = [decoder decodeFloatForKey:kMARGIN_BETWEEN_X_KEY];
     if ([decoder containsValueForKey:kMARGIN_BETWEEN_Y_KEY])
-      self.marginBetweenY = [decoder decodeFloatForKey:kMARGIN_BETWEEN_Y_KEY];
+        self.marginBetweenY = [decoder decodeFloatForKey:kMARGIN_BETWEEN_Y_KEY];
     if ([decoder containsValueForKey:kRANDOM_ARRANGEMENT_OFFSET_MULTIPLIER_KEY])
-      self.randomArrangementOffsetMultiplier = [decoder decodeFloatForKey:kRANDOM_ARRANGEMENT_OFFSET_MULTIPLIER_KEY];
+        self.randomArrangementOffsetMultiplier = [decoder decodeFloatForKey:kRANDOM_ARRANGEMENT_OFFSET_MULTIPLIER_KEY];
     if ([decoder containsValueForKey:kRESPONSIVE_BOUNDS_KEY])
-      self.responsiveBounds = [decoder decodeObjectForKey:kRESPONSIVE_BOUNDS_KEY];
+        self.responsiveBounds = [decoder decodeObjectForKey:kRESPONSIVE_BOUNDS_KEY];
     if ([decoder containsValueForKey:kOBJECT_GUTTER_BOUNDS_KEY])
-      self.objectGutterBounds = [decoder decodeObjectForKey:kOBJECT_GUTTER_BOUNDS_KEY];
+        self.objectGutterBounds = [decoder decodeObjectForKey:kOBJECT_GUTTER_BOUNDS_KEY];
     if ([decoder containsValueForKey:kSHOULD_ACCEPT_DROPPED_OBJECTS_KEY])
-      self.shouldAcceptDroppedObjects = [decoder decodeBoolForKey:kSHOULD_ACCEPT_DROPPED_OBJECTS_KEY];
-    if ([decoder containsValueForKey:kSHOULD_AUTOMATICALLY_RECALCULATE_OBJECT_POSITIONS_KEY])
-      self.shouldKeepObjectsArranged = [decoder decodeBoolForKey:kSHOULD_AUTOMATICALLY_RECALCULATE_OBJECT_POSITIONS_KEY];
+        self.shouldAcceptDroppedObjects = [decoder decodeBoolForKey:kSHOULD_ACCEPT_DROPPED_OBJECTS_KEY];
+    if ([decoder containsValueForKey:kSHOULD_ACCEPT_OBJECTS_SNAPPING_BACK_KEY])
+        self.shouldAcceptObjectsSnappingBack = [decoder decodeBoolForKey:kSHOULD_ACCEPT_OBJECTS_SNAPPING_BACK_KEY];
+    if ([decoder containsValueForKey:kSHOULD_KEEP_OBJECTS_ARRANGED_KEY])
+        self.shouldKeepObjectsArranged = [decoder decodeBoolForKey:kSHOULD_KEEP_OBJECTS_ARRANGED_KEY];
     if ([decoder containsValueForKey:kSHOULD_ANIMATE_OBJECT_ADJUSTMENTS_KEY])
-      self.shouldAnimateObjectAdjustments = [decoder decodeBoolForKey:kSHOULD_ANIMATE_OBJECT_ADJUSTMENTS_KEY];
+        self.shouldAnimateObjectAdjustments = [decoder decodeBoolForKey:kSHOULD_ANIMATE_OBJECT_ADJUSTMENTS_KEY];
+    if ([decoder containsValueForKey:kSHOULD_HIGHLIGHT_ON_DRAG_OVER_KEY])
+        self.shouldHighlightOnDragOver = [decoder decodeBoolForKey:kSHOULD_HIGHLIGHT_ON_DRAG_OVER_KEY];
+    if ([decoder containsValueForKey:kHIGHLIGHT_COLOR_KEY])
+        self.highlightColor = [decoder decodeObjectForKey:kHIGHLIGHT_COLOR_KEY];
+    if ([decoder containsValueForKey:kHIGHLIGHT_OPACITY_KEY])
+        self.highlightOpacity = [decoder decodeFloatForKey:kHIGHLIGHT_OPACITY_KEY];
     if ([decoder containsValueForKey:kANIMATION_DURATION_KEY])
-      self.animationDuration = [decoder decodeFloatForKey:kANIMATION_DURATION_KEY];
+        self.animationDuration = [decoder decodeFloatForKey:kANIMATION_DURATION_KEY];
     if ([decoder containsValueForKey:kANIMATION_DELAY_KEY])
-      self.animationDelay = [decoder decodeFloatForKey:kANIMATION_DELAY_KEY];
-#warning //ivar named: animationOptions and of type: UIViewAnimationOptions -- TYPE_NOT_SUPPORTED 
-#warning //[self setAnimationOptions:[decoder decodeType(?)ForKey:kANIMATION_OPTIONS_KEY]];
+        self.animationDelay = [decoder decodeFloatForKey:kANIMATION_DELAY_KEY];
+    #warning //ivar named: animationOptions and of type: UIViewAnimationOptions -- TYPE_NOT_SUPPORTED 
+    #warning //[self setAnimationOptions:[decoder decodeType(?)ForKey:kANIMATION_OPTIONS_KEY]];
     if ([decoder containsValueForKey:kFILL_HORIZONTALLY_FIRST_KEY])
-      self.fillHorizontallyFirst = [decoder decodeBoolForKey:kFILL_HORIZONTALLY_FIRST_KEY];
+        self.fillHorizontallyFirst = [decoder decodeBoolForKey:kFILL_HORIZONTALLY_FIRST_KEY];
     if ([decoder containsValueForKey:kALLOW_ROWS_KEY])
-      self.allowRows = [decoder decodeBoolForKey:kALLOW_ROWS_KEY];
+        self.allowRows = [decoder decodeBoolForKey:kALLOW_ROWS_KEY];
     if ([decoder containsValueForKey:kALLOW_COLUMNS_KEY])
-      self.allowColumns = [decoder decodeBoolForKey:kALLOW_COLUMNS_KEY];
+        self.allowColumns = [decoder decodeBoolForKey:kALLOW_COLUMNS_KEY];
     if ([decoder containsValueForKey:kDELEGATE_KEY])
-      self.delegate = [decoder decodeObjectForKey:kDELEGATE_KEY];
+        self.delegate = [decoder decodeObjectForKey:kDELEGATE_KEY];
     if ([decoder containsValueForKey:kCONTAINED_OBJECTS_KEY])
-      self.containedObjects = [decoder decodeObjectForKey:kCONTAINED_OBJECTS_KEY];
+        self.containedObjects = [decoder decodeObjectForKey:kCONTAINED_OBJECTS_KEY];
   }
   return self;
 }
@@ -456,16 +493,20 @@ const NSInteger SEDraggableLocationPositionDetermineAutomatically = -1;
     [theCopy setResponsiveBounds:self.responsiveBounds];
     [theCopy setObjectGutterBounds:self.objectGutterBounds];
     [theCopy setShouldAcceptDroppedObjects:self.shouldAcceptDroppedObjects];
-//    [theCopy setShouldAutomaticallyRecalculateObjectPositions:self.shouldKeepObjectsArranged];
+    [theCopy setShouldAcceptObjectsSnappingBack:self.shouldAcceptObjectsSnappingBack];
+    [theCopy setShouldKeepObjectsArranged:self.shouldKeepObjectsArranged];
     [theCopy setShouldAnimateObjectAdjustments:self.shouldAnimateObjectAdjustments];
+    [theCopy setShouldHighlightOnDragOver:self.shouldHighlightOnDragOver];
+    [theCopy setHighlightColor:self.highlightColor];
+    [theCopy setHighlightOpacity:self.highlightOpacity];
     //[theCopy setAnimationDuration:self.animationDuration];
     [theCopy setAnimationDelay:self.animationDelay];
     [theCopy setAnimationOptions:self.animationOptions];
     [theCopy setFillHorizontallyFirst:self.fillHorizontallyFirst];
     [theCopy setAllowRows:self.allowRows];
     [theCopy setAllowColumns:self.allowColumns];
-    //[theCopy setDelegate:[self.delegate copy]];
-    [theCopy setContainedObjects:[self.containedObjects copy]];
+    //[theCopy setDelegate:self.delegate];
+    [theCopy setContainedObjects:self.containedObjects];
 
     return theCopy;
 }
