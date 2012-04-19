@@ -39,29 +39,32 @@
 #define kDROPPABLE_LOCATIONS_KEY                @"droppableLocations"
 #define kDELEGATE_KEY                           @"delegate"
 #define kSHOULD_SNAP_BACK_TO_HOME_LOCATION_KEY 	@"shouldSnapBackToHomeLocation"
+#define kSHOULD_SNAP_BACK_TO_DRAG_ORIGIN_KEY    @"shouldSnapBackToDragOrigin"
 #define kFIRST_X_KEY                            @"firstX"
 #define kFIRST_Y_KEY                            @"firstY"
 
 @interface SEDraggable : UIView <SEDraggableLocationClient, UIGestureRecognizerDelegate, NSCoding> {
 
   SEDraggableLocation *_homeLocation;
-  SEDraggableLocation *_currentLocation;
-  SEDraggableLocation *_previousLocation;
+  SEDraggableLocation __unsafe_unretained *_currentLocation;
+  SEDraggableLocation __unsafe_unretained *_previousLocation;
   NSMutableSet *_droppableLocations;
   UIPanGestureRecognizer *_panGestureRecognizer;
   BOOL _shouldSnapBackToHomeLocation;
+  BOOL _shouldSnapBackToDragOrigin;
   CGFloat firstX;
   CGFloat firstY;
   id <SEDraggableEventResponder> __unsafe_unretained _delegate;
 }
 
 @property (nonatomic, readwrite, strong) UIPanGestureRecognizer *panGestureRecognizer;
-@property (nonatomic, readwrite, strong) SEDraggableLocation *currentLocation;
-@property (nonatomic, readwrite, strong) SEDraggableLocation *homeLocation;
-@property (nonatomic, readwrite, strong) SEDraggableLocation *previousLocation;
+@property (nonatomic, readwrite, unsafe_unretained) SEDraggableLocation *currentLocation;
+@property (nonatomic, readwrite, strong) SEDraggableLocation *homeLocation; // @@TODO: make sure this isn't causing retain cycles mmMmMMMmMMmm
+@property (nonatomic, readwrite, unsafe_unretained) SEDraggableLocation *previousLocation;
 @property (nonatomic, readwrite, strong) NSMutableSet *droppableLocations;
 @property (nonatomic, readwrite, unsafe_unretained) id <SEDraggableEventResponder> delegate;
 @property (nonatomic, readwrite) BOOL shouldSnapBackToHomeLocation;
+@property (nonatomic, readwrite) BOOL shouldSnapBackToDragOrigin;
 @property (nonatomic, readonly) CGFloat firstX;
 @property (nonatomic, readonly) CGFloat firstY;
 

@@ -6,6 +6,7 @@
 //  Copyright (c) 2012 signals.io» (signalenvelope LLC). All rights reserved.
 //
 
+#import <QuartzCore/QuartzCore.h>
 #import "SEDraggableLocation.h"
 #import "SEDraggable.h"
 
@@ -48,8 +49,8 @@ const NSInteger SEDraggableLocationPositionDetermineAutomatically = -1;
 @synthesize allowRows = _allowRows;
 @synthesize allowColumns = _allowColumns;
 @synthesize shouldHighlightOnDragOver = _shouldHighlightOnDragOver;
-@synthesize highlightColor = _highlightColor;
-@synthesize highlightOpacity = _highlightOpacity;
+@dynamic highlightColor;
+@dynamic highlightOpacity;
 @synthesize highlightView = _highlightView;
 
 
@@ -76,12 +77,16 @@ const NSInteger SEDraggableLocationPositionDetermineAutomatically = -1;
   self.responsiveBounds.autoresizingMask = UIViewAutoresizingFlexibleBottomMargin | UIViewAutoresizingFlexibleTopMargin | UIViewAutoresizingFlexibleRightMargin | UIViewAutoresizingFlexibleLeftMargin | UIViewAutoresizingFlexibleHeight | UIViewAutoresizingFlexibleWidth;
   [self addSubview:self.responsiveBounds];
   
-  self.shouldHighlightOnDragOver = YES;
-  self.highlightOpacity = 1.0f;
   self.highlightView = [[UIView alloc] initWithFrame:localFrame];
   self.highlightView.contentMode = UIViewContentModeScaleToFill;
   self.highlightView.autoresizingMask = UIViewAutoresizingFlexibleBottomMargin | UIViewAutoresizingFlexibleTopMargin | UIViewAutoresizingFlexibleRightMargin | UIViewAutoresizingFlexibleLeftMargin | UIViewAutoresizingFlexibleHeight | UIViewAutoresizingFlexibleWidth;
-  self.highlightView.hidden = YES;
+//  self.highlightView.layer. alpha = 0.0f;
+//  self.highlightView.backgroundColor = self.highlightColor;
+//  self.highlightView.hidden = YES;
+  [self showHighlight:NO]; // hide highlight layer initially
+  self.shouldHighlightOnDragOver = YES;
+  self.highlightColor = [UIColor redColor].CGColor;
+  self.highlightOpacity = 0.3f;
   [self addSubview:self.highlightView];
   
   self.containedObjects = [[NSMutableArray alloc] init];
@@ -91,7 +96,7 @@ const NSInteger SEDraggableLocationPositionDetermineAutomatically = -1;
   self.shouldAnimateObjectAdjustments = YES;
   self.animationDuration = 0.3f;
   self.animationDelay = 0.0f;
-  self.animationOptions = UIViewAnimationOptionBeginFromCurrentState;
+  self.animationOptions = 0; //UIViewAnimationOptionBeginFromCurrentState;
   self.delegate = nil;
   self.objectWidth = 0;
   self.objectHeight = 0;
@@ -107,6 +112,27 @@ const NSInteger SEDraggableLocationPositionDetermineAutomatically = -1;
   self.allowColumns = YES;
 }
 
+- (CGColorRef) highlightColor {
+  return self.highlightView.layer.backgroundColor;
+}
+
+- (void) setHighlightColor:(CGColorRef)highlightColor {
+  self.highlightView.layer.backgroundColor = highlightColor;
+}
+
+- (CGFloat) highlightOpacity {
+  return self.highlightView.layer.opacity;
+}
+
+- (void) setHighlightOpacity:(CGFloat)highlightOpacity {
+  self.highlightView.layer.opacity = highlightOpacity;
+}
+
+- (void) showHighlight:(BOOL)show {
+  self.highlightView.layer.hidden = !show;
+}
+
+
 - (void) addSubview:(UIView *)view {
   [super addSubview:view];
   [self sendSubviewToBack:self.highlightView];
@@ -117,6 +143,10 @@ const NSInteger SEDraggableLocationPositionDetermineAutomatically = -1;
 #pragma mark- Permission to enter location
 
 - (BOOL) draggableObject:(SEDraggable *)draggable wantsToEnterLocationWithEntryMethod:(SEDraggableLocationEntryMethod)entryMethod animated:(BOOL)animated {
+  
+  if (self.shouldHighlightOnDragOver) {
+    [self showHighlight:NO];
+  }
   
   BOOL allow = YES; // default to allow
   
@@ -160,17 +190,22 @@ const NSInteger SEDraggableLocationPositionDetermineAutomatically = -1;
 #pragma mark- Movement event handlers
 
 - (void) draggableObjectDidMoveWithinBounds:(SEDraggable *)draggable {
-  if (self.shouldHighlightOnDragOver && self.highlightColor != nil) {
-    self.highlightView.backgroundColor = self.highlightColor;
-    self.highlightView.alpha = self.highlightOpacity;
-    self.highlightView.hidden = NO;
+  if (self.shouldHighlightOnDragOver) {
+//    __block __weak SEDraggableLocation *weakSelf = self;
+//    [UIView animateWithDuration:0.3f animations:^{
+//      weakSelf.highlightView.alpha = weakSelf.highlightOpacity;
+      [self showHighlight:YES];
+//    }];
   }
 }
 
 - (void) draggableObjectDidMoveOutsideBounds:(SEDraggable *)draggable {
-  if (self.shouldHighlightOnDragOver && self.highlightColor != nil) {
-    self.highlightView.backgroundColor = [UIColor clearColor];
-    self.highlightView.hidden = YES;
+  if (self.shouldHighlightOnDragOver) {
+//    __block __weak SEDraggableLocation *weakSelf = self;
+//    [UIView animateWithDuration:0.3f animations:^{
+//      weakSelf.highlightView.alpha = 0.0f;
+      [self showHighlight:NO];
+//    }];
   }
 }
 
@@ -314,7 +349,6 @@ const NSInteger SEDraggableLocationPositionDetermineAutomatically = -1;
     // (no-op)
   }
 
-  // @@TODO: fix! this will probably cause retain cycles unless one side of the relationship is weak mmMmMMMmMMmm
   if (draggable.currentLocation != self) {
     [self.containedObjects addObject:draggable];
     draggable.previousLocation = draggable.currentLocation;
@@ -405,7 +439,7 @@ const NSInteger SEDraggableLocationPositionDetermineAutomatically = -1;
   [encoder encodeBool:self.shouldKeepObjectsArranged forKey:kSHOULD_KEEP_OBJECTS_ARRANGED_KEY];
   [encoder encodeBool:self.shouldAnimateObjectAdjustments forKey:kSHOULD_ANIMATE_OBJECT_ADJUSTMENTS_KEY];
   [encoder encodeBool:self.shouldHighlightOnDragOver forKey:kSHOULD_HIGHLIGHT_ON_DRAG_OVER_KEY];
-  [encoder encodeObject:self.highlightColor forKey:kHIGHLIGHT_COLOR_KEY];
+  [encoder encodeObject:[UIColor colorWithCGColor:self.highlightColor] forKey:kHIGHLIGHT_COLOR_KEY];
   [encoder encodeFloat:self.highlightOpacity forKey:kHIGHLIGHT_OPACITY_KEY];
   [encoder encodeFloat:self.animationDuration forKey:kANIMATION_DURATION_KEY];
   [encoder encodeFloat:self.animationDelay forKey:kANIMATION_DELAY_KEY];
@@ -455,7 +489,7 @@ const NSInteger SEDraggableLocationPositionDetermineAutomatically = -1;
     if ([decoder containsValueForKey:kSHOULD_HIGHLIGHT_ON_DRAG_OVER_KEY])
         self.shouldHighlightOnDragOver = [decoder decodeBoolForKey:kSHOULD_HIGHLIGHT_ON_DRAG_OVER_KEY];
     if ([decoder containsValueForKey:kHIGHLIGHT_COLOR_KEY])
-        self.highlightColor = [decoder decodeObjectForKey:kHIGHLIGHT_COLOR_KEY];
+        self.highlightColor = ((UIColor *)[decoder decodeObjectForKey:kHIGHLIGHT_COLOR_KEY]).CGColor;
     if ([decoder containsValueForKey:kHIGHLIGHT_OPACITY_KEY])
         self.highlightOpacity = [decoder decodeFloatForKey:kHIGHLIGHT_OPACITY_KEY];
     if ([decoder containsValueForKey:kANIMATION_DURATION_KEY])

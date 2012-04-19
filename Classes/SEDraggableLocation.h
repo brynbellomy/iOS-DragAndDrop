@@ -82,7 +82,7 @@ typedef enum {
 @property (nonatomic, readwrite) BOOL shouldKeepObjectsArranged;
 @property (nonatomic, readwrite) BOOL shouldAnimateObjectAdjustments;
 @property (nonatomic, readwrite) BOOL shouldHighlightOnDragOver;
-@property (nonatomic, readwrite, strong) UIColor *highlightColor;
+@property (nonatomic, readwrite) CGColorRef highlightColor;
 @property (nonatomic, readwrite) CGFloat highlightOpacity;
 @property (nonatomic, readwrite) CGFloat animationDuration;
 @property (nonatomic, readwrite) CGFloat animationDelay;
