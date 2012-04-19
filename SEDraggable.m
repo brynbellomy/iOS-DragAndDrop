@@ -25,14 +25,16 @@
 
 @implementation SEDraggable
 
-@synthesize shouldSnapBackToHomeLocation = _shouldSnapBackToHomeLocation,
-            currentLocation = _currentLocation,
-            homeLocation = _homeLocation,
-            previousLocation = _previousLocation,
-            delegate = _delegate,
-            droppableLocations = _droppableLocations,
-            panGestureRecognizer = _panGestureRecognizer;
-@synthesize firstX,firstY;
+@synthesize shouldSnapBackToHomeLocation = _shouldSnapBackToHomeLocation;
+@synthesize shouldSnapBackToDragOrigin = _shouldSnapBackToDragOrigin;
+@synthesize currentLocation = _currentLocation;
+@synthesize homeLocation = _homeLocation;
+@synthesize previousLocation = _previousLocation;
+@synthesize delegate = _delegate;
+@synthesize droppableLocations = _droppableLocations;
+@synthesize panGestureRecognizer = _panGestureRecognizer;
+@synthesize firstX;
+@synthesize firstY;
 
 
 
@@ -76,6 +78,7 @@
     [self addGestureRecognizer:self.panGestureRecognizer];
     
     self.shouldSnapBackToHomeLocation = NO;
+    self.shouldSnapBackToDragOrigin = YES;
     
     self.homeLocation = nil;
     self.currentLocation = nil;
@@ -127,8 +130,8 @@
       for (SEDraggableLocation *location in self.droppableLocations) {
         CGPoint myWindowCoordinates = [self.superview convertPoint:myCoordinates toView:nil];
         if ([location pointIsInsideResponsiveBounds:myWindowCoordinates]) {
+          [location draggableObjectDidMoveWithinBounds:self];
           if ([self.delegate respondsToSelector:@selector(draggableObject:didMoveWithinLocation:)]) {
-            [location draggableObjectDidMoveWithinBounds:self];
             [self.delegate draggableObject:self didMoveWithinLocation:location];
           }
         }
@@ -170,6 +173,9 @@
       if (self.shouldSnapBackToHomeLocation) {
         // @@TODO: should not hard-code "yes" here
         [self askToSnapBackToLocation:self.homeLocation animated:YES];
+      }
+      else if (self.shouldSnapBackToDragOrigin) {
+        [self askToSnapBackToLocation:self.currentLocation animated:YES];
       }
     }
     
@@ -264,6 +270,7 @@
   [encoder encodeObject:self.droppableLocations forKey:kDROPPABLE_LOCATIONS_KEY];
   [encoder encodeObject:self.delegate forKey:kDELEGATE_KEY];
   [encoder encodeBool:self.shouldSnapBackToHomeLocation forKey:kSHOULD_SNAP_BACK_TO_HOME_LOCATION_KEY];
+  [encoder encodeBool:self.shouldSnapBackToDragOrigin forKey:kSHOULD_SNAP_BACK_TO_DRAG_ORIGIN_KEY];
   [encoder encodeFloat:self.firstX forKey:kFIRST_X_KEY];
   [encoder encodeFloat:self.firstY forKey:kFIRST_Y_KEY];
 }
@@ -285,6 +292,8 @@
       self.delegate = [decoder decodeObjectForKey:kDELEGATE_KEY];
     if ([decoder containsValueForKey:kSHOULD_SNAP_BACK_TO_HOME_LOCATION_KEY])
       self.shouldSnapBackToHomeLocation = [decoder decodeBoolForKey:kSHOULD_SNAP_BACK_TO_HOME_LOCATION_KEY];
+    if ([decoder containsValueForKey:kSHOULD_SNAP_BACK_TO_DRAG_ORIGIN_KEY])
+      self.shouldSnapBackToDragOrigin = [decoder decodeBoolForKey:kSHOULD_SNAP_BACK_TO_DRAG_ORIGIN_KEY];
     if ([decoder containsValueForKey:kFIRST_X_KEY])
       firstX = [decoder decodeFloatForKey:kFIRST_X_KEY];
     if ([decoder containsValueForKey:kFIRST_Y_KEY])
