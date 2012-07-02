@@ -3,7 +3,7 @@
 //  SEDraggable
 //
 //  Created by bryn austin bellomy <bryn@signals.io> on 10/24/11.
-//  Copyright (c) 2012 signals.io» (signalenvelope LLC). All rights reserved.
+//  Copyright (c) 2012 robot bubble bath LLC. All rights reserved.
 //
 
 #import <QuartzCore/QuartzCore.h>
@@ -19,7 +19,7 @@ const NSInteger SEDraggableLocationPositionDetermineAutomatically = -1;
 - (void)    acceptDraggableObject:(SEDraggable *)draggable entryMethod:(SEDraggableLocationEntryMethod)entryMethod animated:(BOOL)animated;
 - (void)    refuseDraggableObject:(SEDraggable *)draggable entryMethod:(SEDraggableLocationEntryMethod)entryMethod animated:(BOOL)animated;
 - (CGPoint) calculateCenterOfDraggableObject:(SEDraggable *)object inPosition:(NSInteger)position;
-- (CGPoint) getAcceptableLocationForDraggableObject:(SEDraggable *)object inPosition:(NSInteger)position;
+- (CGPoint) getAcceptableWindowCoordsForDraggableObject:(SEDraggable *)object inPosition:(NSInteger)position;
 
 @end
 
@@ -191,21 +191,13 @@ const NSInteger SEDraggableLocationPositionDetermineAutomatically = -1;
 
 - (void) draggableObjectDidMoveWithinBounds:(SEDraggable *)draggable {
   if (self.shouldHighlightOnDragOver) {
-//    __block __weak SEDraggableLocation *weakSelf = self;
-//    [UIView animateWithDuration:0.3f animations:^{
-//      weakSelf.highlightView.alpha = weakSelf.highlightOpacity;
-      [self showHighlight:YES];
-//    }];
+    [self showHighlight:YES];
   }
 }
 
 - (void) draggableObjectDidMoveOutsideBounds:(SEDraggable *)draggable {
   if (self.shouldHighlightOnDragOver) {
-//    __block __weak SEDraggableLocation *weakSelf = self;
-//    [UIView animateWithDuration:0.3f animations:^{
-//      weakSelf.highlightView.alpha = 0.0f;
-      [self showHighlight:NO];
-//    }];
+    [self showHighlight:NO];
   }
 }
 
@@ -240,11 +232,12 @@ const NSInteger SEDraggableLocationPositionDetermineAutomatically = -1;
   return point;
 }
 
-- (CGPoint) getAcceptableLocationForDraggableObject:(SEDraggable *)object inPosition:(NSInteger)position {
+- (CGPoint) getAcceptableWindowCoordsForDraggableObject:(SEDraggable *)object inPosition:(NSInteger)position {
   if (position == SEDraggableLocationPositionDetermineAutomatically) {
     if (self.shouldKeepObjectsArranged) {
       position = self.containedObjects.count - 1;
-      return [self calculateCenterOfDraggableObject:object inPosition:position];
+      CGPoint p = [self calculateCenterOfDraggableObject:object inPosition:position];
+      return [self convertPoint:p toView:nil]; // return point in window coords
     }
     else {
       // return the center point
@@ -256,7 +249,8 @@ const NSInteger SEDraggableLocationPositionDetermineAutomatically = -1;
     }
   }
   else {
-    return [self calculateCenterOfDraggableObject:object inPosition:position];
+    CGPoint p = [self calculateCenterOfDraggableObject:object inPosition:position];
+    return [self convertPoint:p toView:nil]; // return point in window coords
   }
 }
 
@@ -271,13 +265,14 @@ const NSInteger SEDraggableLocationPositionDetermineAutomatically = -1;
     double irand;
     double mult = myself.randomArrangementOffsetMultiplier;
     for (SEDraggable *object in myself.containedObjects) {
-      CGPoint center = [myself getAcceptableLocationForDraggableObject:object inPosition:index];
+      CGPoint centerInWindowCoords = [myself getAcceptableWindowCoordsForDraggableObject:object inPosition:index];
+      CGPoint centerInLocalCoords = [myself convertPoint:centerInWindowCoords fromView:nil];
       index++;
       irand = (double)rand();
-      center.x += (CGFloat)((irand / max) * mult) - (mult / 2);
-      center.y += (CGFloat)((irand / max) * mult) - (mult / 2);
+      centerInLocalCoords.x += (CGFloat)((irand / max) * mult) - (mult / 2);
+      centerInLocalCoords.y += (CGFloat)((irand / max) * mult) - (mult / 2);
       
-      [object setCenter:center];
+      [object setCenter:centerInLocalCoords];
       
       if ([myself.delegate respondsToSelector:@selector(draggableLocation:didMoveObject:)])
         [myself.delegate draggableLocation:myself didMoveObject:object];
@@ -359,8 +354,8 @@ const NSInteger SEDraggableLocationPositionDetermineAutomatically = -1;
   // add the draggable to its new parent view
   [self addSubview:draggable];
 
-  CGPoint destinationPointInWindowCoords = [self getAcceptableLocationForDraggableObject:draggable
-                                                                              inPosition:SEDraggableLocationPositionDetermineAutomatically];
+  CGPoint destinationPointInWindowCoords = [self getAcceptableWindowCoordsForDraggableObject: draggable
+                                                                                  inPosition: SEDraggableLocationPositionDetermineAutomatically];
 
   CGPoint destinationPointInLocalCoords = [self convertPoint:destinationPointInWindowCoords fromView:nil];
   

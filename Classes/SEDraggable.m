@@ -3,7 +3,7 @@
 //  SEDraggable
 //
 //  Created by bryn austin bellomy <bryn@signals.io> on 10/23/11.
-//  Copyright (c) 2012 signals.io» (signalenvelope LLC). All rights reserved.
+//  Copyright (c) 2012 robot bubble bath LLC. All rights reserved.
 //
 
 #import "SEDraggable.h"
