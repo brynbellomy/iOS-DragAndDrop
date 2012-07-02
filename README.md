@@ -1,6 +1,8 @@
-# SEDraggable
+![Screenshot](https://github.com/brynbellomy/iOS-DragAndDrop/raw/master/SEDraggableDemo/screenshot.png)
 
-## wtf is this
+# // draggable
+
+# wtf is this
 
 It's currently not possible to use Cocoa's drag-and-drop classes and protocols
 in iPhone/iPad apps.  This really sucks.  Implementing a
@@ -9,12 +11,17 @@ __UIPanGestureRecognizer__ is really fucking boring.
 __SEDraggable__ is a subclass of __UIView__ that fills this void, making it
 easy to add drag-and-drop functionality to any __UIView__ in your application.
 
-## How to use
+# how
 
-Add the source files to your Xcode project.  Import the `SEDraggable.h` header.
+**Note: check out the example project.  It's a pain to explain code in English,
+and I didn't try very hard.**
+
+Add the source files to your Xcode project.  Import the `SEDraggable.h` and
+`SEDraggableLocation.h` headers.
 
 ```objective-c
 #import "SEDraggable.h"
+#import "SEDraggableLocation.h"
 ```
 
 To initialize an instance of __SEDraggable__, you'll probably want to use one
@@ -45,7 +52,7 @@ SEDraggable *draggableView = [SEDraggable initWithFrame:frame];
 SEDraggable *draggableView = [SEDraggable init];
 ```
 
-## Using SEDraggableLocation to manage automatic behaviors
+# using SEDraggableLocation's automatic behaviors
 
 __SEDraggableLocation__ allows you to easily switch between certain automatic
 behaviors -- for example, visually arranging a set of __SEDraggable__ objects
@@ -91,7 +98,7 @@ draggableView.homeLocation = homeLocation;
 [homeLocation addDraggableObject:draggableView];
 ```
 
-## SEDraggableLocation bounds
+# SEDraggableLocation bounds
 
 You can even specify different boundaries for where an __SEDraggableLocation__
 will _accept_ dropped objects and where it will _place_ them.  And these two
@@ -107,7 +114,7 @@ this kind of behavior:
 @property (nonatomic, readwrite) CGRect objectGutterBounds;
 ```
 
-## Delegate notifications
+# delegate messages
 
 You can specify a delegate that will be notified of pertinent drag-and-drop
 events.  Delegates of __SEDraggable__ and __SEDraggableLocation__ objects must
@@ -115,7 +122,7 @@ conform either to the __SEDraggableEventResponder__ protocol or the
 __SEDraggableLocationEventResponder__ protocol, respectively.  The two
 protocols define the following messages, _all of which are optional_:
 
-### @protocol SEDraggableEventResponder
+## @protocol SEDraggableEventResponder
 
 ```objective-c
 - (void) draggableObjectDidMove:(SEDraggable *)object;
@@ -131,7 +138,7 @@ protocols define the following messages, _all of which are optional_:
 - (void) draggableObject:(SEDraggable *)object didEndSnapAnimationWithID:(NSString *)animationID andContext:(void *)context;
 ```
 
-### @protocol SEDraggableLocationEventResponder
+## @protocol SEDraggableLocationEventResponder
 
 ```objective-c
 - (void) draggableLocation:(SEDraggableLocation *)location didAcceptDroppedObject:(SEDraggable *)object;
@@ -139,13 +146,13 @@ protocols define the following messages, _all of which are optional_:
 - (void) draggableObject:(SEDraggable *)object wasRemovedFromLocation:(SEDraggableLocation *)location;
 ```
 
-# Authors and contributors
+# authors and contributors
 
 bryn austin bellomy <<bryn@signals.io>>
 
-# License (MIT license)
+# license (MIT license)
 
-Copyright (c) 2012 bryn austin bellomy, http://signals.io/
+Copyright (c) 2012 bryn austin bellomy // [robot bubble bath LLC](http://robotbubblebath.com/)
 
 Permission is hereby granted, free of charge, to any person obtaining
 a copy of this software and associated documentation files (the
