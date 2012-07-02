@@ -1,6 +1,6 @@
-![Screenshot](https://github.com/brynbellomy/iOS-DragAndDrop/raw/master/SEDraggableDemo/screenshot.png)
-
 # // draggable
+
+![Screenshot](https://github.com/brynbellomy/iOS-DragAndDrop/raw/master/SEDraggableDemo/screenshot.png)
 
 # wtf is this
 
