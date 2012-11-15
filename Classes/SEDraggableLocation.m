@@ -178,6 +178,10 @@ const NSInteger SEDraggableLocationPositionDetermineAutomatically = -1;
 }
 
 - (BOOL) draggableObjectWasDroppedInside:(SEDraggable *)draggable animated:(BOOL)animated {
+    if([self.delegate respondsToSelector:@selector(draggableObject:wasAddedToLocation:)])
+    {
+        [self.delegate draggableObject:draggable wasAddedToLocation:self];
+    }
   return [self draggableObject:draggable wantsToEnterLocationWithEntryMethod:SEDraggableLocationEntryMethodWasDropped animated:animated];
 }
 
